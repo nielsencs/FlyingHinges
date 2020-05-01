@@ -1,0 +1,25 @@
+body {
+	background-color: #000000;
+	background-image: url(vividtil.gif);
+	margin-left: 0px;
+	margin-top: 0px;
+	margin-right: 0px;
+	margin-bottom: 0px;
+}
+body,td,th {
+	font-family: Arial, Swiss, Helvetica, sans-serif;
+	font-size: 10pt;
+	color: 660066;
+}
+a:link {
+	color: #FFFFFF;
+}
+a:visited {
+	color: #CCCCCC;
+}
+a:hover {
+	color: #FFFFFF;
+}
+a:active {
+	color: #CCCCFF;
+}

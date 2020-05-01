@@ -1,0 +1,105 @@
+/*
+    Created on : 14-May-2018
+    Author     : Carl Nielsen
+*/
+
+.home {
+  /* border: 3px solid #773322; */
+  border: 3px solid DimGray;
+  /* background-color: bisque; */
+  background-color: Gainsboro;
+}
+
+.home>a {
+  /* color: black; */
+  text-decoration: none;
+  font-weight: normal;
+  /* transition: background-color .3s ease-in-out; */
+}
+
+.subMain {
+  margin: 1%;
+  padding: 1%;
+  width: 84%;
+  min-height: 140px;
+  overflow: auto;
+
+  color: white;
+  background-color: black;
+  border: 3px solid Turquoise;
+  border-radius: 14px;
+  -webkit-border-radius: 14px;
+  -moz-border-radius: 14px;
+  -o-border-radius: 14px;
+  -ms-border-radius: 14px;
+  -khtml-border-radius: 14px;
+
+  /* box-shadow: 3px 3px 7px DimGray; */
+}
+
+.subMain:nth-child(odd) {
+  float: right;
+}
+
+.subMain:nth-child(even) {
+  float: left;
+}
+
+.blob {
+  background-repeat: no-repeat;
+  background-position: bottom right;
+  background-image: url("../images/youTube.jpg");
+  width: 50%;
+  height: 100%;
+  max-width: 293px;
+  /* max-height: 140px; */
+}
+
+.youtube {
+  background-repeat: no-repeat;
+  background-position: bottom right;
+  background-image: url("../images/youTube.jpg");
+}
+
+.bsm {
+  background-repeat: no-repeat;
+  background-position: right;
+  background-image: url("../images/bsm.jpg");
+}
+
+.vivid {
+  background-repeat: no-repeat;
+  background-position: right;
+  background-image:  url("../images/vivid.png") ;
+}
+
+.stomp {
+  background-repeat: no-repeat;
+  background-position: right;
+  background-image:  url("../images/stomp.jpg") ;
+}
+
+.mkmo {
+  background-repeat: no-repeat;
+  background-position: right;
+  background-image:  url("../images/MKMakerONE.png") ;
+}
+
+.ficly {
+  background-repeat: no-repeat;
+  background-position: right;
+  background-image:  url("../images/ficly.jpg") ;
+}
+
+.sectGeneral {
+  width: 96%;
+  border: 3px solid DimGray;
+}
+
+.readmore {
+  text-align: center;
+}
+
+.searchTable td {
+  font-size: smaller;
+}
