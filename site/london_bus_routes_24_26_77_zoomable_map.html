@@ -32,7 +32,7 @@
     <div class="item"><span class="swatch" style="background:#e53935"></span> 24 <button data-ref="24" class="toggle active" aria-pressed="true">Hide</button></div>
     <div class="item"><span class="swatch" style="background:#1e88e5"></span> 26 <button data-ref="26" class="toggle active" aria-pressed="true">Hide</button></div>
     <div class="item"><span class="swatch" style="background:#43a047"></span> 77 <button data-ref="77" class="toggle active" aria-pressed="true">Hide</button></div>
-    <div style="margin-top:8px; font-size:12px; color:#444">Live geometry from OpenStreetMap via Overpass. If nothing loads, try refreshing once.</div>
+    <div style="margin-top:8px; font-size:12px; color:#444">If the lines don’t appear, Overpass may be rate-limited. Click <em>Retry</em> on a route or refresh the page.</div>
   </div>
   <div class="attribution-note">Data © OpenStreetMap contributors • Map © OSM</div>
 
@@ -61,34 +61,53 @@
     const OVERPASS_ENDPOINTS = [
       'https://overpass-api.de/api/interpreter',
       'https://overpass.kumi.systems/api/interpreter',
-      'https://overpass.openstreetmap.ru/api/interpreter'
+      'https://overpass.osm.ch/api/interpreter'
     ];
 
     function overpassQueryForRef(ref) {
-      // Constrain to Greater London area by name to avoid same-number routes elsewhere in UK
-      return `
-        [out:json][timeout:60];
-        area["name"="Greater London"]["boundary"="administrative"]["admin_level"="6"]->.searchArea;
+      // Prefer a tag-based search that avoids needing an area (more reliable & faster)
+      // 1) Try network matching London
+      // 2) Fallback: any bus route relation with this ref inside a generous London bbox
+      const q1 = `
+        [out:json][timeout:90];
         (
-          relation(area.searchArea)["type"="route"]["route"="bus"]["ref"="${ref}"];
+          relation["type"="route"]["route"="bus"]["ref"="${ref}"]["network"~"(?i)london"];  
+          relation["type"="route_master"]["route_master"="bus"]["ref"="${ref}"]["network"~"(?i)london"]; 
         );
         (._;>;);
         out body;`;
+      const q2 = `
+        [out:json][timeout:90];
+        (
+          relation["type"="route"]["route"="bus"]["ref"="${ref}"](51.25,-0.5,51.75,0.3);
+          relation["type"="route_master"]["route_master"="bus"]["ref"="${ref}"](51.25,-0.5,51.75,0.3);
+        );
+        (._;>;);
+        out body;`;
+      return [q1, q2];
     }
 
-    async function fetchOverpass(query) {
+    async function fetchOverpass(queries) {
+      const errors = [];
       for (const endpoint of OVERPASS_ENDPOINTS) {
-        try {
-          const res = await fetch(endpoint, { method: 'POST', body: query, headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' } });
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          const json = await res.json();
-          return json;
-        } catch (e) {
-          // try next endpoint
-          console.warn('Overpass fetch failed on this endpoint, trying next:', e);
+        for (const q of queries) {
+          try {
+            // Use GET with ?data= to avoid some CORS blocks on POST
+            const url = `${endpoint}?data=${encodeURIComponent(q)}`;
+            const res = await fetch(url, { method: 'GET', headers: { 'Accept': 'application/json' } });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const json = await res.json();
+            if (json && json.elements && json.elements.length) {
+              return json;
+            } else {
+              errors.push(`Empty result from ${endpoint}`);
+            }
+          } catch (e) {
+            errors.push(`${endpoint}: ${e.message}`);
+          }
         }
       }
-      throw new Error('All Overpass endpoints failed');
+      throw new Error('All Overpass endpoints/queries failed. ' + errors.join(' | '));
     }
 
     function featureStyle(ref) {
@@ -122,17 +141,16 @@
 
     async function addRoute(ref) {
       try {
-        const query = 'data=' + encodeURIComponent(overpassQueryForRef(ref));
-        const json = await fetchOverpass(query);
+        const queries = overpassQueryForRef(ref);
+        const json = await fetchOverpass(queries);
         const geo = osmtogeojson(json);
 
-        // Filter to only relation features (the actual routes), then draw their member ways
         const group = routeLayers[ref];
         group.clearLayers();
 
         const bounds = [];
 
-        L.geoJSON(geo, {
+        const layer = L.geoJSON(geo, {
           style: featureStyle(ref),
           filter: f => (f.geometry && (f.geometry.type === 'LineString' || f.geometry.type === 'MultiLineString')),
           onEachFeature: (feature, layer) => {
@@ -145,17 +163,22 @@
           }
         }).addTo(group);
 
-        if (bounds.length) {
-          // Fit only initially when first routes load (avoid jumping on later toggles)
-          if (!addRoute._fitted) {
-            map.fitBounds(bounds, { padding: [30, 30] });
-            addRoute._fitted = true;
-          }
+        if (!layer.getLayers || layer.getLayers().length === 0) {
+          throw new Error('No geometries found for route ' + ref);
+        }
+
+        if (bounds.length && !addRoute._fitted) {
+          map.fitBounds(bounds, { padding: [30, 30] });
+          addRoute._fitted = true;
         }
       } catch (err) {
         console.error('Failed to load route', ref, err);
         const group = routeLayers[ref];
-        group.addLayer(L.marker(map.getCenter()).bindPopup(`Could not load route ${ref}. Try refreshing.`));
+        const msg = `Could not load route ${ref}. This might be due to Overpass rate limits or a network blocker. Try again or toggle another route.`;
+        group.addLayer(L.marker(map.getCenter()).bindPopup(msg).openPopup());
+        // Also update the legend button label to suggest a retry
+        const btn = document.querySelector(`button[data-ref="${ref}"]`);
+        if (btn) btn.textContent = 'Retry';
       }
     }
 
