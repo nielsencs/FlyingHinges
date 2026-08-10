@@ -7,8 +7,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato|Londrina+Solid:300">
-  <link rel="stylesheet" type="text/css" href="styles/general.css">
-  <link rel="stylesheet" type="text/css" href="styles/pages.css">
+  <link rel="stylesheet" type="text/css" href="/styles/general.css">
+  <link rel="stylesheet" type="text/css" href="/styles/pages.css">
 
   <!-- <script src='https://www.google.com/recaptcha/api.js'></script> -->
 
@@ -36,23 +36,23 @@
 
 <body>
   <div class="content">
-    <img class="banner-image" src="images/BannerRainbow.jpg" alt="Flying Hinges">
+    <img class="banner-image" src="/images/BannerRainbow.jpg" alt="Flying Hinges">
 
     <div class="menu">
-      <a href="https://www.FlyingHinges.co.uk" class="logo">
-        <img src="images/FlyingHinges.png" alt="FlyingHinges" />
+      <a href="/" class="logo">
+        <img src="/images/FlyingHinges.png" alt="FlyingHinges" />
       </a>
 
       <ul class="nav">
-        <li><a href="index.php">Home</a></li>
-        <li><a href="channel.php">YouTube Channel</a></li>
+        <li><a href="/">Home</a></li>
+        <li><a href="/channel">YouTube Channel</a></li>
         <li><a href="https://www.BibleStudyMan.co.uk">BibleStudyMan</a></li>
-        <li><a href="vivid">Vivid</a></li>
-        <li><a href="stomp.php">Stomp</a></li>
-        <li><a href="MKMO.php">MKMakerOne</a></li>
+        <li><a href="/vivid/">Vivid</a></li>
+        <li><a href="/stomp">Stomp</a></li>
+        <li><a href="/MKMO">MKMakerOne</a></li>
         <li><a href="https://ficly.com/authors/nielsencs">Ficly</a></li>
         <li><a href="https://funkychunkyman.blogspot.com/">More Prose</a></li>
-        <li><a href="pricing.php">Pricing</a></li>
-        <li><a href="support.php">Support Me</a></li>
+        <li><a href="/pricing">Pricing</a></li>
+        <li><a href="/support">Support Me</a></li>
       </ul>
     </div>
