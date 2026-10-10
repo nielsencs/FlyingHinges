@@ -39,6 +39,13 @@ $required = [
     'function demoSaveItem(form)',
     'function demoBinItem(form)',
     'function demoApplySummaryControl(form)',
+    'function demoApplyContext(form)',
+    'function demoApplyFilters()',
+    'window.boardDropdownChanged = function(select)',
+    'data-demo-section="community"',
+    'data-demo-section="household"',
+    'data-demo-project="events"',
+    'data-demo-project="paperwork"',
     'Saved locally in this browser',
 ];
 foreach ($required as $needle) {
