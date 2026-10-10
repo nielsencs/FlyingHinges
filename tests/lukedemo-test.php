@@ -36,6 +36,10 @@ $required = [
     'setTimeout(demoStartFakeAgentActivity, 3000',
     'setTimeout(demoAddFakeAgentReport, 7000',
     'This is where the Agent would report back with what they\'ve done.',
+    'function demoSaveItem(form)',
+    'function demoBinItem(form)',
+    'function demoApplySummaryControl(form)',
+    'Saved locally in this browser',
 ];
 foreach ($required as $needle) {
     if (!str_contains($html, $needle)) {
@@ -60,6 +64,8 @@ $forbidden = [
     'Focus A',
     'Item A',
     'luke-demo',
+    'This sample shows',
+    'dummy',
 ];
 foreach ($forbidden as $needle) {
     if (str_contains($html, $needle)) {
