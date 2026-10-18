@@ -218,6 +218,9 @@ function project_demo_handle_reset(string $action): bool {
     if (!project_demo_mode()) {
         return false;
     }
+    if ($action === 'demo_clear_all' || $action === 'demo_random_start') {
+        project_demo_agent_reset();
+    }
     if ($action === 'demo_clear_all') {
         project_save_board(project_demo_blank_board());
         return true;
@@ -242,4 +245,159 @@ function project_demo_toggle_html(): string {
         return '<span class="demo-wordmark">Demo</span> <a class="button small subtle" href="./?demo=off">Leave demo</a> ' . project_demo_reset_buttons_html();
     }
     return '<a class="button small subtle demo-toggle" href="./?demo=on">Demo</a>';
+}
+
+// ---- Fake Agent: DOES NOTHING real. It only moves a light and adds a canned note
+// inside this visitor's sandbox. Timeline after an Open/Do item is posted:
+// +3s the "Agent active" light comes on, +10s a canned report is added to the item.
+const PROJECT_DEMO_AGENT_LIGHT_AFTER = 3;
+const PROJECT_DEMO_AGENT_REPORT_AFTER = 10;
+
+function project_demo_agent_plan_path(): string {
+    return dirname(project_data_path()) . '/agent-plan.json';
+}
+
+function project_demo_agent_plans(): array {
+    $path = project_demo_agent_plan_path();
+    $plans = is_file($path) ? json_decode((string)file_get_contents($path), true) : [];
+    return is_array($plans) ? $plans : [];
+}
+
+function project_demo_agent_write_plans(array $plans): void {
+    $path = project_demo_agent_plan_path();
+    if (!$plans) {
+        @unlink($path);
+        return;
+    }
+    $dir = dirname($path);
+    if (!is_dir($dir)) {
+        mkdir($dir, 0770, true);
+    }
+    file_put_contents($path, json_encode(array_values($plans)) . "\n", LOCK_EX);
+}
+
+function project_demo_agent_write_activity(string $itemId): void {
+    $path = project_activity_path();
+    if ($itemId === '') {
+        @unlink($path);
+        return;
+    }
+    $dir = dirname($path);
+    if (!is_dir($dir)) {
+        mkdir($dir, 0770, true);
+    }
+    file_put_contents($path, json_encode(['id' => $itemId]) . "\n", LOCK_EX);
+}
+
+// Called after a user action has been applied: queue the fake Agent for Open/Do items.
+function project_demo_agent_after_action(array $before, array $after, array $post): void {
+    if (!project_demo_mode()) {
+        return;
+    }
+    $action = project_field($post, 'action');
+    $itemId = '';
+    if ($action === 'add_item' || $action === 'add_todo') {
+        $ids = array_map(fn($i) => (int)($i['id'] ?? 0), $before['items'] ?? []);
+        foreach ($after['items'] ?? [] as $item) {
+            if (!in_array((int)($item['id'] ?? 0), $ids, true)) {
+                $itemId = (string)$item['id'];
+                $status = (string)($item['status'] ?? '');
+            }
+        }
+    } elseif ($action === 'update_item' || $action === 'update_todo') {
+        $wanted = (int)project_field($post, 'id');
+        $old = $new = null;
+        foreach ($before['items'] ?? [] as $i) { if ((int)($i['id'] ?? 0) === $wanted) { $old = $i; } }
+        foreach ($after['items'] ?? [] as $i) { if ((int)($i['id'] ?? 0) === $wanted) { $new = $i; } }
+        if ($old && $new && ($old['status'] ?? '') !== ($new['status'] ?? '') && empty($new['deleted_at'])) {
+            $itemId = (string)$wanted;
+            $status = (string)($new['status'] ?? '');
+        }
+    }
+    if ($itemId === '' || !in_array($status ?? '', ['Open', 'Do'], true)) {
+        return;
+    }
+    $plans = array_values(array_filter(project_demo_agent_plans(), fn($p) => (string)($p['id'] ?? '') !== $itemId));
+    if (count($plans) < 5) {
+        $plans[] = ['id' => $itemId, 'at' => time()];
+    }
+    project_demo_agent_write_plans($plans);
+}
+
+// Called before rendering: turn elapsed time into light on/off and the canned note.
+function project_demo_agent_advance(array $board): array {
+    if (!project_demo_mode()) {
+        return $board;
+    }
+    $plans = project_demo_agent_plans();
+    if (!$plans) {
+        if (is_file(project_activity_path())) {
+            project_demo_agent_activity_clear();
+        }
+        return $board;
+    }
+    $now = time();
+    $lightId = '';
+    $remaining = [];
+    $changed = false;
+    foreach ($plans as $plan) {
+        $id = (string)($plan['id'] ?? '');
+        $age = $now - (int)($plan['at'] ?? $now);
+        $found = false;
+        foreach ($board['items'] as &$item) {
+            if ((string)($item['id'] ?? '') !== $id) { continue; }
+            $found = true;
+            if ($age >= PROJECT_DEMO_AGENT_REPORT_AFTER) {
+                $item['notes'] = rtrim((string)($item['notes'] ?? '')) . "\n\n" . project_note_stamp_line('Agent') . "\nThis is where the Agent would report back with what they've done.";
+                $item['changed_at'] = $item['updated_at'] = project_now();
+                $changed = true;
+            }
+        }
+        unset($item);
+        if (!$found || $age >= PROJECT_DEMO_AGENT_REPORT_AFTER) {
+            continue;
+        }
+        if ($age >= PROJECT_DEMO_AGENT_LIGHT_AFTER && $lightId === '') {
+            $lightId = $id;
+        }
+        $remaining[] = $plan;
+    }
+    project_demo_agent_write_plans($remaining);
+    project_demo_agent_write_activity($lightId);
+    if ($changed) {
+        project_save_board($board);
+    }
+    return $board;
+}
+
+function project_demo_agent_activity_clear(): void {
+    @unlink(project_activity_path());
+}
+
+function project_demo_agent_reset(): void {
+    @unlink(project_demo_agent_plan_path());
+    @unlink(project_activity_path());
+}
+
+// Tiny timer: reloads the page when the next fake Agent step is due.
+function project_demo_agent_script_html(): string {
+    if (!project_demo_mode()) {
+        return '';
+    }
+    $now = time();
+    $next = null;
+    foreach (project_demo_agent_plans() as $plan) {
+        $age = $now - (int)($plan['at'] ?? $now);
+        foreach ([PROJECT_DEMO_AGENT_LIGHT_AFTER, PROJECT_DEMO_AGENT_REPORT_AFTER] as $step) {
+            if ($age < $step) {
+                $wait = $step - $age;
+                $next = $next === null ? $wait : min($next, $wait);
+            }
+        }
+    }
+    if ($next === null) {
+        return '';
+    }
+    $ms = ($next * 1000) + 300;
+    return '<script>(function(){function go(){if(typeof boardDirty!=="undefined"&&boardDirty){setTimeout(go,2000);return;}window.location.reload();}setTimeout(go,' . (int)$ms . ');})();</script>';
 }

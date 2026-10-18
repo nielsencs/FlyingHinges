@@ -22,7 +22,7 @@ if (isset($_GET['attachment'])) {
 }
 
 
-$board = project_load_board();
+$board = project_demo_agent_advance(project_load_board());
 if (isset($_GET['board_version'])) {
     header('Content-Type: application/json; charset=utf-8');
     header('Cache-Control: no-store');
@@ -47,7 +47,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
     $redirect = project_field($_POST, 'action') === 'delete_todo' ? project_redirect_after_action($board, $_POST) : '';
+    $boardBefore = $board;
     $board = project_apply_action($board, $_POST, $_FILES);
+    project_demo_agent_after_action($boardBefore, $board, $_POST);
     project_save_board($board);
     if ($redirect === '') {
         $redirect = project_redirect_after_action($board, $_POST);

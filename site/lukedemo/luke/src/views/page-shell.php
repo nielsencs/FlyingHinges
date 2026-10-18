@@ -41,5 +41,6 @@
   </div>
 </div>
 </main>
+<?= project_demo_agent_script_html() ?>
 </body>
 </html>
