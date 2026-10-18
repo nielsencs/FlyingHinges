@@ -1,98 +1,18 @@
 <?php
-$demoPath = __DIR__ . '/../site/lukedemo/index.php';
-if (!is_file($demoPath)) {
-    fwrite(STDERR, "LUKE demo page missing\n");
-    exit(1);
+// The public LUKE demo is the real LUKE code, demo-only, with no real data path.
+function fail(string $m): void { fwrite(STDERR, $m . "\n"); exit(1); }
+$dir = __DIR__ . '/../site/lukedemo';
+foreach (['index.php', 'luke/index.php', 'luke/src/demo.php', 'luke/src/demo-only.flag', 'luke/assets/theme.css', 'luke/assets/project-board.css'] as $f) {
+    if (!is_file("$dir/$f")) fail("missing $f (run scripts/sync-luke-demo.py)");
 }
-$html = shell_exec('php ' . escapeshellarg($demoPath));
-if (!is_string($html) || $html === '') {
-    fwrite(STDERR, "LUKE demo did not render\n");
-    exit(1);
+foreach (['index.php', 'luke/index.php'] as $entry) {
+    $html = shell_exec('cd ' . escapeshellarg("$dir") . ' && TMPDIR=' . escapeshellarg(sys_get_temp_dir()) . ' php ' . escapeshellarg("$dir/$entry"));
+    if (!is_string($html) || !str_contains($html, 'Confirm venue access') || !str_contains($html, 'Demo')) fail("$entry did not render the demo");
+    if (str_contains($html, 'demo=off')) fail("$entry offers a way out of demo");
 }
-$source = file_get_contents($demoPath);
-$required = [
-    '<title>LUKE Demo</title>',
-    'class="luke-wordmark"',
-    '<span class="demo-wordmark">Demo</span>',
-    'Areas, Focuses and Items.',
-    'Items: All items',
-    'data-open-add-item-modal',
-    'class="task-card task-row"',
-    'Community',
-    'Events',
-    'Confirm venue access',
-    'data-priority="must"',
-    'data-priority="should"',
-    'data-priority="could"',
-    'data-priority="wont"',
-    'data-demo-status="open"',
-    'data-demo-status="do"',
-    'data-demo-status="ready"',
-    'data-demo-status="done"',
-    'data-demo-status="blocked"',
-    'data-binned="1"',
-    'User yyyy-mm-dd hh:mm',
-    'Agent active',
-    'setTimeout(demoStartFakeAgentActivity, 3000',
-    'setTimeout(demoAddFakeAgentReport, 7000',
-    'This is where the Agent would report back with what they\'ve done.',
-    'function demoSaveItem(form)',
-    'function demoBinItem(form)',
-    'function demoApplySummaryControl(form)',
-    'function demoApplyContext(form)',
-    'function demoApplyFilters()',
-    'window.boardDropdownChanged = function(select)',
-    'data-demo-section="community"',
-    'data-demo-section="household"',
-    'data-demo-project="events"',
-    'data-demo-project="paperwork"',
-    'Saved locally in this browser',
-];
-foreach ($required as $needle) {
-    if (!str_contains($html, $needle)) {
-        fwrite(STDERR, "LUKE demo missing: {$needle}\n");
-        exit(1);
+foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS)) as $file) {
+    if (preg_match('/\.(php)$/', $file) && preg_match('#/srv/www/[a-z]+\.biblestudyman|state/project/board\.json#', file_get_contents($file))) {
+        fail('real board path found in ' . $file);
     }
 }
-if (preg_match('/\bproject_save_board\b|PROJECT_BOARD_PATH/', $source) || str_contains($html, "fetch('./?board_version=1'")) {
-    fwrite(STDERR, "LUKE demo must not save state or call the backend\n");
-    exit(1);
-}
-$forbidden = [
-    'Demo only:',
-    'nothing here writes to the real LUKE board',
-    'Public LUKE Demo',
-    'Try adding',
-    'Every Priority + Status + Bin combination',
-    'Tooling',
-    'BSM',
-    'RFX',
-    'Area A',
-    'Focus A',
-    'Item A',
-    'luke-demo',
-    'This sample shows',
-    'dummy',
-];
-foreach ($forbidden as $needle) {
-    if (str_contains($html, $needle)) {
-        fwrite(STDERR, "LUKE demo interface should not include: {$needle}\n");
-        exit(1);
-    }
-}
-$comboPattern = "/data-priority=\"(must|should|could|wont)\"[^>]*data-demo-status=\"(open|do|ready|done|blocked)\"[^>]*data-binned=\"(0|1)\"/";
-preg_match_all($comboPattern, $html, $matches, PREG_SET_ORDER);
-$combos = [];
-foreach ($matches as $match) {
-    $combos[$match[1] . '|' . $match[2] . '|' . $match[3]] = true;
-}
-if (count($combos) < 8 || count($combos) > 12) {
-    fwrite(STDERR, 'LUKE demo should use a reduced representative sample; found ' . count($combos) . "\n");
-    exit(1);
-}
-$visibleHtml = preg_replace('/<script\b[^>]*>.*?<\/script>|<style\b[^>]*>.*?<\/style>/is', '', $html);
-$demoOccurrences = substr_count(strip_tags((string)$visibleHtml), 'Demo');
-if ($demoOccurrences > 2) {
-    fwrite(STDERR, "LUKE demo should only add Demo to the LUKE identity, not repeat it around the interface\n");
-    exit(1);
-}
+echo "lukedemo test passed\n";
