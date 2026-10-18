@@ -38,6 +38,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header('Location: ' . project_redirect_after_action($board, $_POST), true, 303);
         exit;
     }
+    if (project_demo_handle_reset(project_field($_POST, 'action'))) {
+        header('Location: ./', true, 303);
+        exit;
+    }
     if (project_demo_mode() && in_array(project_field($_POST, 'action'), project_demo_blocked_actions(), true)) {
         header('Location: ./', true, 303);
         exit;

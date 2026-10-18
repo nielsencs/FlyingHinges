@@ -32,6 +32,9 @@ function project_note_stamp_datetime(): string {
 }
 
 function project_note_stamp_user(): string {
+    if (project_demo_mode()) {
+        return 'User';
+    }
     $candidates = [
         getenv('PROJECT_BOARD_NOTE_USER') ?: '',
         $_SERVER['REMOTE_USER'] ?? '',

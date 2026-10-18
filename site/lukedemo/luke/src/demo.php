@@ -157,12 +157,89 @@ function project_demo_seed_board(): array {
     ];
 }
 
+function project_demo_blank_board(): array {
+    $now = 'Preview state';
+    return [
+        'updated_at' => $now,
+        'sections' => [['slug' => 'my-area', 'name' => 'My area', 'summary' => 'Your own area. Rename it or add more.', 'updated_at' => $now]],
+        'projects' => [['slug' => 'my-focus', 'section' => 'my-area', 'name' => 'My focus', 'status' => 'Active', 'now' => '', 'next' => '', 'blocked' => '', 'updated_at' => $now]],
+        'items' => [],
+    ];
+}
+
+function project_demo_random_board(): array {
+    $now = 'Preview state';
+    $areas = [
+        'Home' => ['Garden', 'Kitchen', 'Repairs', 'Shopping'],
+        'Club' => ['Events', 'Members', 'Budget', 'Newsletter'],
+        'Studio' => ['Music', 'Drawing', 'Writing', 'Photos'],
+        'Trip' => ['Bookings', 'Packing', 'Routes', 'Budget'],
+        'Study' => ['Reading', 'Notes', 'Essays', 'Revision'],
+        'Shop' => ['Orders', 'Stock', 'Website', 'Suppliers'],
+    ];
+    $titles = ['Sort the first draft', 'Ring to confirm', 'Check the numbers', 'Tidy up the notes', 'Order the supplies', 'Plan the next step', 'Write a short summary', 'Book a time', 'Find the missing file', 'Ask for a second opinion', 'Compare two options', 'Send a reminder', 'Clear the backlog', 'Decide on a date', 'Review last week', 'Collect the receipts'];
+    $notes = ['Try changing the title, priority, status, notes, or Bin state.', 'A short note about why this matters.', 'Next step: decide, then move it to Ready.', ''];
+    $priorities = ['Must', 'Should', 'Could', "Won't", ''];
+    $statuses = ['Open', 'Do', 'Ready', 'Done', 'Blocked'];
+    $names = array_keys($areas);
+    shuffle($names);
+    $names = array_slice($names, 0, random_int(2, 3));
+    $sections = $projects = $items = [];
+    shuffle($titles);
+    $titleIndex = 0;
+    foreach ($names as $name) {
+        $sectionSlug = project_slug($name);
+        $sections[] = ['slug' => $sectionSlug, 'name' => $name, 'summary' => 'A made-up area for trying LUKE.', 'updated_at' => $now];
+        $focuses = $areas[$name];
+        shuffle($focuses);
+        foreach (array_slice($focuses, 0, random_int(2, 3)) as $focus) {
+            $focusSlug = $sectionSlug . '-' . project_slug($focus);
+            $projects[] = ['slug' => $focusSlug, 'section' => $sectionSlug, 'name' => $focus, 'status' => 'Active', 'now' => '', 'next' => '', 'blocked' => '', 'updated_at' => $now];
+            for ($i = random_int(1, 3); $i > 0; $i--) {
+                $id = count($items) + 1;
+                $item = [
+                    'id' => $id, 'section' => $sectionSlug, 'project' => $focusSlug,
+                    'priority' => $priorities[array_rand($priorities)], 'status' => $statuses[array_rand($statuses)],
+                    'order' => $id, 'title' => $titles[$titleIndex++ % count($titles)],
+                    'notes' => "User yyyy-mm-dd hh:mm\n" . $notes[array_rand($notes)], 'updated_at' => $now,
+                ];
+                if (random_int(1, 8) === 1) {
+                    $item['deleted_at'] = '2026-10-10 19:45 UTC';
+                }
+                $items[] = $item;
+            }
+        }
+    }
+    return ['updated_at' => $now, 'sections' => $sections, 'projects' => $projects, 'items' => $items];
+}
+
+// Returns true when the action was a demo-only board reset (and has been saved).
+function project_demo_handle_reset(string $action): bool {
+    if (!project_demo_mode()) {
+        return false;
+    }
+    if ($action === 'demo_clear_all') {
+        project_save_board(project_demo_blank_board());
+        return true;
+    }
+    if ($action === 'demo_random_start') {
+        project_save_board(project_demo_random_board());
+        return true;
+    }
+    return false;
+}
+
+function project_demo_reset_buttons_html(): string {
+    return '<form method="post" class="demo-reset" style="display:inline" onsubmit="return confirm(\'Clear everything from this demo?\')"><input type="hidden" name="action" value="demo_clear_all"><button type="submit" class="small">Clear all</button></form> '
+        . '<form method="post" class="demo-reset" style="display:inline"><input type="hidden" name="action" value="demo_random_start"><button type="submit" class="small">Random start</button></form>';
+}
+
 function project_demo_toggle_html(): string {
     if (project_demo_forced()) {
-        return '<span class="demo-wordmark">Demo</span>';
+        return '<span class="demo-wordmark">Demo</span>' . project_demo_reset_buttons_html();
     }
     if (project_demo_mode()) {
-        return '<span class="demo-wordmark">Demo</span> <a class="button small subtle" href="./?demo=off">Leave demo</a>';
+        return '<span class="demo-wordmark">Demo</span> <a class="button small subtle" href="./?demo=off">Leave demo</a> ' . project_demo_reset_buttons_html();
     }
     return '<a class="button small subtle demo-toggle" href="./?demo=on">Demo</a>';
 }

@@ -95,19 +95,23 @@ function project_active_item_id(array $query = []): string {
     return trim((string)($data['id'] ?? ''));
 }
 
+function project_agent_name(): string {
+    return project_demo_mode() ? 'The Agent' : 'Joel';
+}
+
 function project_doing_led(array $todo, string $activeItemId): string {
     $itemId = trim((string)($todo['id'] ?? ''));
     $isActive = $itemId !== '' && $activeItemId !== '' && $itemId === $activeItemId;
     $class = 'doing-led' . ($isActive ? ' active' : '');
-    $label = $isActive ? 'Joel is working on item #' . $itemId : 'Joel is not working on item #' . $itemId;
-    $title = $isActive ? 'Joel is working on this item' : 'Joel is not working on this item';
+    $label = $isActive ? project_agent_name() . ' is working on item #' . $itemId : project_agent_name() . ' is not working on item #' . $itemId;
+    $title = $isActive ? project_agent_name() . ' is working on this item' : project_agent_name() . ' is not working on this item';
     return '<span class="' . h($class) . '" aria-label="' . h($label) . '" title="' . h($title) . '">Agent active</span>';
 }
 
 function project_site_agent_active_light(string $activeItemId, array $contextQuery = []): string {
     $activeItemId = trim($activeItemId);
     $class = 'doing-led' . ($activeItemId !== '' ? ' active' : '');
-    $status = $activeItemId !== '' ? 'Joel is working on item #' . $activeItemId : 'Joel is not working on any LUKE item';
+    $status = $activeItemId !== '' ? project_agent_name() . ' is working on item #' . $activeItemId : project_agent_name() . ' is not working on any LUKE item';
     $label = $status . '; show current context / Agent active';
     $params = array_filter([
         'section_filter' => (string)($contextQuery['section_filter'] ?? ''),

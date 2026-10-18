@@ -900,7 +900,7 @@ function boardSelectionIsAtEditorEnd(editor) {
 }
 function boardEnsureNoteStamp(editor) {
   if (!editor || editor.dataset.noteStampAdded === '1') return;
-  const user = (editor.dataset.noteStampUser || '').trim() || 'Carl';
+  const user = (editor.dataset.noteStampUser || '').trim() || 'User';
   const stamp = user + ' ' + boardNoteTimestamp();
   const separator = editor.textContent.trim() === '' ? '' : '<br><br>';
   editor.innerHTML = editor.innerHTML + separator + boardEscapeNoteText(stamp) + '<br>';

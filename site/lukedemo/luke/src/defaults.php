@@ -5,6 +5,9 @@ function project_slug(string $text): string {
 }
 
 function project_default_board(): array {
+    if (project_demo_mode()) {
+        return project_demo_seed_board();
+    }
     $now = project_now();
     return [
         'updated_at' => $now,
@@ -80,6 +83,9 @@ function project_default_project_for_section(string $sectionSlug, string $now = 
 }
 
 function project_merge_default_entries(array $board, array $default): array {
+    if (project_demo_mode()) {
+        return $board; // demo boards never gain the real default areas
+    }
     $sectionSlugs = project_section_slugs($board);
     foreach ($default['sections'] as $section) {
         if (!in_array((string)$section['slug'], $sectionSlugs, true)) {
