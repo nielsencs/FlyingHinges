@@ -1,0 +1,65 @@
+:root {
+  color-scheme: light dark;
+  --bg: #10131a;
+  --panel: #181d27;
+  --muted: #aab3c2;
+  --line: #31394a;
+  --accent: #8fd3ff;
+
+  --good: #99e2a2;
+  --warn: #ffd479;
+  --bad: #ff9b9b;
+  
+  --input-bg: #0e1219;
+  --ink: #f3f5fa;
+
+  --shadow: #0004;
+  --header-start: #151b26;
+  --header-end: #10131a;
+
+  --priority-must-bg: #63ffa2;
+  --priority-should-bg: #c0ff7b; /* was #fdff7b; we may go back to this! */
+  --priority-could-bg: #ffb764;
+  --priority-wont-bg: #ff5656;
+  --priority-blank-bg: #ff8fc7;
+  --status-open-bg: #6495ff;
+  --status-doing-bg: #63ffa2;
+  --status-ready-bg: #f0c75e;
+  --status-blocked-bg: #616161;
+  --status-done-bg: #a985ff;
+  --priority-bg: var(--priority-blank-bg);
+  --status-bg: var(--status-open-bg);
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color-scheme: light;
+    --bg: #364851;
+    --panel: #fffaf2;
+    --muted: #494440;
+    --line: #d2c3af;
+    --accent: #266f9f;
+  
+    --good: #237744;
+    --warn: #855d0d;
+    --bad: #a3433f;
+  
+    --input-bg: #ffffff;
+    --ink: #000000;
+
+    --shadow: #5c3a1418;
+    --header-start: #67b5e3;
+    --header-end: #fffaf2;
+  }
+}
+
+.task-row[data-priority="must"] { --priority-bg: var(--priority-must-bg); }
+.task-row[data-priority="should"] { --priority-bg: var(--priority-should-bg); }
+.task-row[data-priority="could"] { --priority-bg: var(--priority-could-bg); }
+.task-row[data-priority="wont"] { --priority-bg: var(--priority-wont-bg); }
+.task-row[data-status="open"] { --status-bg: var(--status-open-bg); }
+.task-row[data-status="do"] { --status-bg: var(--status-doing-bg); }
+.task-row[data-status="ready"] { --status-bg: var(--status-ready-bg); }
+.task-row[data-status="blocked"] { --status-bg: var(--status-blocked-bg); }
+.task-row[data-status="done"] { --status-bg: var(--status-done-bg); }
+.task-row[data-status="bin"] { --status-bg: var(--status-blocked-bg); }
