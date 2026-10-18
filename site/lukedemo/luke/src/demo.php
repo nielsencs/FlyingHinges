@@ -289,19 +289,25 @@ function project_demo_agent_write_activity(string $itemId): void {
     file_put_contents($path, json_encode(['id' => $itemId]) . "\n", LOCK_EX);
 }
 
-// Called after a user action has been applied: queue the fake Agent for Open/Do items.
+// Called after a user action has been applied: queue the fake Agent using the same
+// rules as the real LUKE watcher. Only items with priority Must/Should/Could count
+// (blank and Won't are ignored), and the item must end up Open or Do. It reacts to:
+// an item added with a priority, an item's first priority being set, a change to Do,
+// or an Open/Do item's notes being edited.
 function project_demo_agent_after_action(array $before, array $after, array $post): void {
     if (!project_demo_mode()) {
         return;
     }
     $action = project_field($post, 'action');
+    $counts = fn($i) => in_array((string)($i['priority'] ?? ''), ['Must', 'Should', 'Could'], true)
+        && in_array((string)($i['status'] ?? ''), ['Open', 'Do'], true)
+        && empty($i['deleted_at']);
     $itemId = '';
     if ($action === 'add_item' || $action === 'add_todo') {
         $ids = array_map(fn($i) => (int)($i['id'] ?? 0), $before['items'] ?? []);
         foreach ($after['items'] ?? [] as $item) {
-            if (!in_array((int)($item['id'] ?? 0), $ids, true)) {
+            if (!in_array((int)($item['id'] ?? 0), $ids, true) && $counts($item)) {
                 $itemId = (string)$item['id'];
-                $status = (string)($item['status'] ?? '');
             }
         }
     } elseif ($action === 'update_item' || $action === 'update_todo') {
@@ -309,12 +315,16 @@ function project_demo_agent_after_action(array $before, array $after, array $pos
         $old = $new = null;
         foreach ($before['items'] ?? [] as $i) { if ((int)($i['id'] ?? 0) === $wanted) { $old = $i; } }
         foreach ($after['items'] ?? [] as $i) { if ((int)($i['id'] ?? 0) === $wanted) { $new = $i; } }
-        if ($old && $new && ($old['status'] ?? '') !== ($new['status'] ?? '') && empty($new['deleted_at'])) {
-            $itemId = (string)$wanted;
-            $status = (string)($new['status'] ?? '');
+        if ($old && $new && $counts($new)) {
+            $prioritised = trim((string)($old['priority'] ?? '')) === '';
+            $started = ($old['status'] ?? '') !== 'Do' && ($new['status'] ?? '') === 'Do';
+            $notes = trim((string)($old['notes'] ?? '')) !== trim((string)($new['notes'] ?? ''));
+            if ($prioritised || $started || $notes) {
+                $itemId = (string)$wanted;
+            }
         }
     }
-    if ($itemId === '' || !in_array($status ?? '', ['Open', 'Do'], true)) {
+    if ($itemId === '') {
         return;
     }
     $plans = array_values(array_filter(project_demo_agent_plans(), fn($p) => (string)($p['id'] ?? '') !== $itemId));
