@@ -232,12 +232,22 @@ function project_duplicate_item(array $board, array $input): array {
     foreach ($board['items'] ?? [] as $todo) {
         if ((int)($todo['id'] ?? 0) !== $id) { continue; }
         $now = project_now();
+        $section = (string)($todo['section'] ?? '');
+        $project = (string)($todo['project'] ?? '');
+        $newOrder = max(1, min(50, (int)($todo['order'] ?? 1) + 1));
+        foreach ($board['items'] as &$other) {
+            if ((string)($other['section'] ?? '') === $section && (string)($other['project'] ?? '') === $project
+                && (int)($other['id'] ?? 0) !== $id && (int)($other['order'] ?? 1) >= $newOrder) {
+                $other['order'] = min(50, (int)($other['order'] ?? 1) + 1);
+            }
+        }
+        unset($other);
         $board['items'][] = [
             'id' => project_next_item_id($board),
-            'section' => (string)($todo['section'] ?? ''),
-            'project' => (string)($todo['project'] ?? ''),
+            'section' => $section,
+            'project' => $project,
             'priority' => (string)($todo['priority'] ?? ''),
-            'order' => (int)($todo['order'] ?? 1),
+            'order' => $newOrder,
             'status' => 'Open',
             'title' => (string)($todo['title'] ?? ''),
             'notes' => '',
