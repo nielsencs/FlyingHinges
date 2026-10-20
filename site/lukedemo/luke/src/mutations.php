@@ -366,6 +366,27 @@ function project_hard_delete_item(array $board, array $input): array {
     return project_normalise_board($board);
 }
 
+function project_empty_bin(array $board, array $input): array {
+    $audioFiles = [];
+    $board['items'] = array_values(array_filter($board['items'] ?? [], function ($todo) use (&$audioFiles) {
+        if (!project_item_is_binned($todo)) {
+            return true;
+        }
+        $audio = $todo['audio'] ?? null;
+        if (is_array($audio) && trim((string)($audio['file'] ?? '')) !== '') {
+            $audioFiles[] = (string)$audio['file'];
+        }
+        return false;
+    }));
+    foreach ($audioFiles as $file) {
+        $path = project_audio_path($file);
+        if (is_file($path)) {
+            @unlink($path);
+        }
+    }
+    return project_normalise_board($board);
+}
+
 function project_delete_item_audio(array $board, array $input): array {
     $id = (int)($input['id'] ?? 0);
     foreach ($board['items'] as &$todo) {

@@ -23,6 +23,7 @@ function project_apply_action(array $board, array $post, array $files = []): arr
         'delete_item_audio' => project_delete_item_audio($board, $post),
         'restore_item' => project_restore_item($board, $post),
         'hard_delete_item' => project_hard_delete_item($board, $post),
+        'empty_bin' => project_empty_bin($board, $post),
         'delete_todo' => project_delete_item($board, $post),
         'delete_todo_audio' => project_delete_item_audio($board, $post),
         'restore_todo' => project_restore_item($board, $post),
@@ -86,7 +87,7 @@ function project_redirect_after_action(array $board, array $post): string {
             }
         }
     }
-    if ($hasReturnContext && in_array($action, ['save_settings', 'add_section', 'update_section', 'add_project', 'update_project', 'add_item', 'update_item', 'move_item_scope', 'clear_item_changed', 'improve_item_transcript', 'use_improved_item_transcript', 'delete_item', 'delete_item_audio', 'restore_item', 'hard_delete_item', 'add_todo', 'update_todo', 'move_todo_scope', 'clear_todo_changed', 'record_audio', 'delete_todo', 'delete_todo_audio', 'restore_todo', 'hard_delete_todo', 'undo_last_change'], true)) {
+    if ($hasReturnContext && in_array($action, ['save_settings', 'add_section', 'update_section', 'add_project', 'update_project', 'add_item', 'update_item', 'move_item_scope', 'clear_item_changed', 'improve_item_transcript', 'use_improved_item_transcript', 'delete_item', 'delete_item_audio', 'restore_item', 'hard_delete_item', 'empty_bin', 'add_todo', 'update_todo', 'move_todo_scope', 'clear_todo_changed', 'record_audio', 'delete_todo', 'delete_todo_audio', 'restore_todo', 'hard_delete_todo', 'undo_last_change'], true)) {
         $section = project_field($post, 'return_section');
         $project = project_field($post, 'return_project');
     }

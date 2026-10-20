@@ -28,6 +28,7 @@
 <main>
 <?php include __DIR__ . '/edit-modals.php'; ?>
 <section class="task-list-section">
+  <form id="empty-bin" method="post" onsubmit="return confirm('Permanently delete everything in the Bin? This cannot be undone.')"><input type="hidden" name="action" value="empty_bin"><?= $returnContextInputs ?></form>
   <form id="undo-last-change" method="post" onsubmit="return confirm('Undo the last saved LUKE change?')"><input type="hidden" name="action" value="undo_last_change"><input type="hidden" name="section" value="<?= h($sectionFilter) ?>"><input type="hidden" name="project" value="<?= h($projectFilter) ?>"><?= $returnContextInputs ?></form>
   <div class="task-list">
     <?php foreach ($visibleTodos as $todo): ?>
