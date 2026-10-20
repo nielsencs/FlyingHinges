@@ -960,3 +960,18 @@ summary {
 }
 .demo-controls { margin: .25rem 0; }
 .demo-wordmark { font-size: clamp(1rem, 2vw, 1.35rem); font-weight: 700; letter-spacing: .08em; margin-right: .5rem; text-transform: uppercase; vertical-align: middle; }
+
+.setting-choice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--ink);
+  margin: 6px 0;
+}
+
+.setting-choice input {
+  width: auto;
+  flex: 0 0 auto;
+  margin: 0;
+}

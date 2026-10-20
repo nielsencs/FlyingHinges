@@ -136,6 +136,7 @@ function boardWarnIfDirty(event) {
 }
 function boardConfirmDirtyNavigation(event) {
   if (event && event.target.closest && event.target.closest('.voice-scope-modal button')) return true;
+  if (event && event.target.closest && event.target.closest('[data-open-settings], [data-close-settings]')) return true;
   if (event && event.type === 'click' && !(event.target.closest && event.target.closest('a[href]'))) return true;
   if (!boardDirty) return true;
   if (boardDirty && !window.confirm(boardDirtyMessage)) {
