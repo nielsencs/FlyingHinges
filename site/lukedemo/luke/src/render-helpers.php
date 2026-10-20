@@ -378,7 +378,7 @@ function project_status_options(array $values, string $selected): string {
         if ($value === '') {
             $html .= '<option value=""' . $themeClass . $isSelected . '></option>';
         } else {
-            $label = in_array($value, PROJECT_TODO_STATUSES, true) ? project_item_status_label($value) : $value;
+            $label = in_array($value, PROJECT_TODO_STATUSES, true) ? project_item_status_label($value) : project_priority_label($value);
             $valueAttribute = $label !== $value ? ' value="' . h($value) . '"' : '';
             $html .= '<option' . $themeClass . $valueAttribute . $isSelected . '>' . h($label) . '</option>';
         }
@@ -395,7 +395,7 @@ function project_filter_options(array $values, string $selected, string $allLabe
             continue;
         }
         $isSelected = $value === $selected ? ' selected' : '';
-        $label = in_array($value, PROJECT_TODO_STATUSES, true) ? project_item_status_label($value) : $value;
+        $label = in_array($value, PROJECT_TODO_STATUSES, true) ? project_item_status_label($value) : project_priority_label($value);
         $html .= '<option value="' . h($value) . '"' . $isSelected . '>' . h($label) . '</option>';
     }
     return $html;
@@ -550,7 +550,7 @@ function project_item_update_hidden_inputs(array $todo, array $overrides = [], a
 
 function project_summary_meta_controls(array $todo, string $displayStatus, array $contextQuery = []): string {
     $priority = (string)($todo['priority'] ?? '');
-    $priorityLabel = $priority === '' ? 'No priority' : $priority;
+    $priorityLabel = $priority === '' ? 'No priority' : project_priority_label($priority);
     $order = max(1, min(50, (int)($todo['order'] ?? 1)));
     $status = (string)($todo['status'] ?? 'Open');
     $isBinned = project_item_is_binned($todo);
@@ -559,7 +559,7 @@ function project_summary_meta_controls(array $todo, string $displayStatus, array
     $html = '<span class="task-badges task-summary-controls">';
     $html .= '<form method="post" class="summary-control-form">'
         . project_item_update_hidden_inputs($todo, [], $contextQuery)
-        . '<select name="priority" class="' . h($priorityClass) . '" title="Change priority" aria-label="Change priority from ' . h($priorityLabel) . '" onchange="boardSummaryMetaChanged(this)">' . project_status_options(PROJECT_PRIORITIES, $priority) . '</select></form>';
+        . '<select name="priority" class="' . h($priorityClass) . '" title="Change priority" aria-label="Change priority from ' . h($priorityLabel) . '" onchange="boardSummaryMetaChanged(this)">' . project_status_options(project_priority_values(), $priority) . '</select></form>';
 
     $html .= '<form method="post" class="summary-control-form summary-order-form">'
         . project_item_update_hidden_inputs($todo, [], $contextQuery)

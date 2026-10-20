@@ -9,6 +9,7 @@
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23254260'/%3E%3Cpath d='M43 7a15 15 0 0 0-17 20L9 44a6 6 0 0 0 8 8l17-17A15 15 0 0 0 54 18l-10 10-8-8L46 10a15 15 0 0 0-3-3z' fill='%23f3f5fa'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="<?= h(project_asset_base()) ?>theme.css">
 <link rel="stylesheet" href="<?= h(project_asset_base()) ?>project-board.css">
+<?= project_colour_overrides_css($board) ?>
 <?php include __DIR__ . '/browser-script.php'; ?>
 </head>
 <body>
@@ -17,7 +18,7 @@
   <h1 class="luke-wordmark" aria-label="LUKE">
     <span class="luke-letter">L<span>ogical</span></span>&nbsp;<span class="luke-letter">U<span>nifying</span></span>&nbsp;<span class="luke-letter">K<span>nowledge</span></span>&nbsp;<span class="luke-letter">E<span>ngine</span></span>
   </h1>
-  <div class="demo-controls"><?= project_demo_toggle_html() ?></div>
+  <div class="demo-controls"><a class="button small subtle" href="<?= h('?' . http_build_query(['view' => 'settings'] + $fullContextQuery)) ?>">Settings</a> <?= project_demo_toggle_html() ?></div>
   <div class="muted">LUKE Areas, Focuses and Items.<br> Updated <?= h((string)($board['updated_at'] ?? '')) ?>.</div>
   <div class="remote-update-notice muted" hidden>Update available; save or reload to avoid losing your edits.</div>
 </header>

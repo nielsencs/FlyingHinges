@@ -1,6 +1,7 @@
 <?php
 function project_render_board(array $board, array $query = []): string {
     $board = project_normalise_board($board);
+    project_use_settings($board);
     $boardVersion = project_browser_version($board, $query);
     $projects = $board['projects'];
     $sections = $board['sections'];
