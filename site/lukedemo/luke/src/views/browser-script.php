@@ -946,15 +946,49 @@ function boardPasteFormattedNote(event) {
     if (editor) boardSyncFormattedNote(editor);
   });
 }
-function boardInitFormattedNotesEditors() {
-  document.querySelectorAll('[data-formatted-notes-editor]').forEach(function(editor) {
+function boardInitFormattedNotesEditors(root) {
+  (root && root.querySelectorAll ? root : document).querySelectorAll('[data-formatted-notes-editor]').forEach(function(editor) {
     boardSyncFormattedNote(editor);
     editor.addEventListener('paste', boardPasteFormattedNote);
     editor.addEventListener('beforeinput', function(event) { boardNoteEditorBeforeInput(editor, event); });
     editor.addEventListener('input', function() { boardSyncFormattedNote(editor); });
   });
 }
+function boardDuplicateSubmitted(event) {
+  const form = event.target.closest && event.target.closest('form[id^="duplicate-task-"]');
+  if (!form || !window.fetch || !window.DOMParser) return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  if (form.dataset.busy === '1') return false;
+  form.dataset.busy = '1';
+  const original = document.querySelector('[data-task-id="' + CSS.escape(form.id.replace('duplicate-task-', '')) + '"]');
+  fetch('./', {method: 'POST', body: new URLSearchParams(new FormData(form)), credentials: 'same-origin'})
+    .then(function(response) {
+      if (!response.ok) throw new Error('Duplicate failed');
+      const newId = new URL(response.url, location.href).searchParams.get('just_edited_item_id') || '';
+      return response.text().then(function(html) { return {html: html, newId: newId}; });
+    })
+    .then(function(result) {
+      const doc = new DOMParser().parseFromString(result.html, 'text/html');
+      const fresh = result.newId ? doc.querySelector('[data-task-id="' + CSS.escape(result.newId) + '"]') : null;
+      if (!fresh || !original) { window.location.reload(); return; }
+      const card = document.importNode(fresh, true);
+      card.open = true;
+      original.after(card);
+      boardInitFormattedNotesEditors(card);
+      card.scrollIntoView({block: 'nearest'});
+      const title = card.querySelector('input[name="title"]');
+      if (title) title.focus();
+      form.dataset.busy = '0';
+    })
+    .catch(function(error) {
+      window.alert(error.message || 'Duplicate failed');
+      form.dataset.busy = '0';
+    });
+  return false;
+}
 window.addEventListener('beforeunload', boardWarnIfDirty);
+document.addEventListener('submit', boardDuplicateSubmitted, true);
 document.addEventListener('input', boardMarkDirty, true);
 document.addEventListener('change', boardMarkDirty, true);
 document.addEventListener('submit', boardDeleteAudioSubmitted, true);
@@ -1087,7 +1121,7 @@ document.addEventListener('DOMContentLoaded', boardRestoreOpenState);
 document.addEventListener('DOMContentLoaded', boardReopenSubmittedItem);
 document.addEventListener('DOMContentLoaded', boardRestoreFocusedItem);
 document.addEventListener('DOMContentLoaded', boardEnableDetailsMotion);
-document.addEventListener('DOMContentLoaded', boardInitFormattedNotesEditors);
+document.addEventListener('DOMContentLoaded', function() { boardInitFormattedNotesEditors(); });
 document.addEventListener('DOMContentLoaded', boardFlushQueuedRecordings);
 document.addEventListener('DOMContentLoaded', boardInitAutoRefresh);
 window.addEventListener('online', boardFlushQueuedRecordings);
