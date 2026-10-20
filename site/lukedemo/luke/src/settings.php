@@ -106,21 +106,21 @@ function project_colour_overrides_css(array $board): string {
     return '<style>:root { ' . implode(' ', $lines) . " }</style>\n";
 }
 
-function project_settings_form_html(array $board, string $cancelUrl, string $returnInputs): string {
+function project_settings_form_html(array $board, string $cancelUrl, string $returnInputs, bool $visible = false): string {
     $settings = project_settings($board);
     $defaults = project_default_colours();
-    $html = '<div class="modal-backdrop"><form class="modal dirty-watch" method="post">';
+    $html = '<div class="modal-backdrop settings-backdrop" data-settings-modal' . ($visible ? '' : ' hidden') . '><form class="modal" method="post" data-settings-form data-saved-mode="' . h($settings['label_mode']) . '">';
     $html .= '<input type="hidden" name="action" value="save_settings">' . $returnInputs;
-    $html .= '<h2>LUKE settings</h2><h3>Priority labels</h3>';
-    foreach (['words' => 'Words: Must, Should, Could, Won\'t', 'numbers' => 'Numbers: 0 (Must), 1, 2, 3'] as $mode => $text) {
-        $html .= '<label class="setting-choice"><input type="radio" name="label_mode" value="' . h($mode) . '"' . ($settings['label_mode'] === $mode ? ' checked' : '') . '> ' . h($text) . '</label>';
+    $html .= '<h2>LUKE settings</h2><h3>Priority style</h3>';
+    foreach (['words' => 'MoSCoW: Must, Should, Could, Won\'t', 'numbers' => 'Numeric priority: 1, 2, 3 (0 reserved for extreme urgency)'] as $mode => $text) {
+        $html .= '<label class="setting-choice"><input type="radio" name="label_mode" value="' . h($mode) . '"' . ($settings['label_mode'] === $mode ? ' checked' : '') . ' data-label-mode> ' . h($text) . '</label>';
     }
     $html .= '<h3>Colours</h3><div class="setting-colours">';
     foreach (project_colour_names() as $key => $name) {
         $value = $settings['colours'][$key] ?? $defaults[$key];
-        $html .= '<label class="setting-colour">' . h($name) . ' <input type="color" name="colour_' . h($key) . '" value="' . h($value) . '"></label>';
+        $html .= '<label class="setting-colour">' . h($name) . ' <input type="color" name="colour_' . h($key) . '" value="' . h($value) . '" data-colour-var="--' . h(str_replace('_', '-', $key)) . '-bg" data-default="' . h($defaults[$key]) . '" data-saved="' . h($value) . '"></label>';
     }
-    $html .= '</div><label class="setting-choice"><input type="checkbox" name="reset_colours" value="1"> Reset all colours to defaults when saving</label>';
-    $html .= '<div class="actions center-actions"><button class="small">Save</button><a class="button small danger" href="' . h($cancelUrl) . '">Cancel</a></div></form></div>';
+    $html .= '</div><div class="actions"><button type="button" class="small subtle" data-reset-colours>Reset colours to defaults</button></div>';
+    $html .= '<div class="actions center-actions"><button class="small">Save</button><a class="button small danger" href="' . h($cancelUrl) . '" data-close-settings>Cancel</a></div></form></div>';
     return $html;
 }

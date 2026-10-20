@@ -1,8 +1,6 @@
 <?php
 ?>
-<?php if ($view === 'settings'): ?>
-<?= project_settings_form_html($board, $cancelUrl, $returnContextInputs) ?>
-<?php elseif ($view === 'add_section' || $view === 'edit_section'): ?>
+<?php if ($view === 'add_section' || $view === 'edit_section'): ?>
 <?php $editingSection = $view === 'edit_section' && $selectedSection; ?>
 <div class="modal-backdrop">
   <form class="modal dirty-watch" method="post">

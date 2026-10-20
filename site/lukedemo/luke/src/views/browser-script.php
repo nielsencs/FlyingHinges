@@ -973,6 +973,82 @@ document.addEventListener('keydown', boardCloseScopeMenuOnEscape, true);
 document.addEventListener('keydown', boardCloseAddItemModalOnEscape, true);
 document.addEventListener('keydown', boardCloseItemFocusModalOnEscape, true);
 document.addEventListener('keydown', boardVoiceScopeCloseOnEscape, true);
+
+const boardPriorityOrder = {words: ['Must', 'Should', 'Could', "Won't"], numbers: ['Should', 'Could', "Won't", 'Must']};
+const boardPriorityNumbers = {'Must': '0', 'Should': '1', 'Could': '2', "Won't": '3'};
+function boardApplyLabelMode(mode) {
+  document.querySelectorAll('select').forEach(function(select) {
+    const options = Array.prototype.slice.call(select.options).filter(function(o) { return boardPriorityNumbers[o.value] !== undefined; });
+    if (!options.length) return;
+    options.forEach(function(o) {
+      const key = o.value;
+      o.setAttribute('value', key);
+      o.textContent = mode === 'numbers' ? boardPriorityNumbers[key] : key;
+    });
+    options.sort(function(a, b) { return boardPriorityOrder[mode].indexOf(a.value) - boardPriorityOrder[mode].indexOf(b.value); });
+    const selected = select.value;
+    options.forEach(function(o) { select.appendChild(o); });
+    select.value = selected;
+  });
+}
+function boardSettingsForm() { return document.querySelector('[data-settings-form]'); }
+function boardSettingsModal() { return document.querySelector('[data-settings-modal]'); }
+function boardSettingsPreviewColours(form, useDefaults) {
+  form.querySelectorAll('[data-colour-var]').forEach(function(input) {
+    document.documentElement.style.setProperty(input.dataset.colourVar, input.value);
+  });
+}
+function boardSettingsRevert(form) {
+  form.querySelectorAll('[data-colour-var]').forEach(function(input) {
+    input.value = input.dataset.saved;
+    document.documentElement.style.setProperty(input.dataset.colourVar, input.dataset.saved);
+  });
+  const mode = form.dataset.savedMode || 'words';
+  form.querySelectorAll('[data-label-mode]').forEach(function(r) { r.checked = r.value === mode; });
+  boardApplyLabelMode(mode);
+}
+function boardSettingsClick(event) {
+  const t = event.target;
+  if (!t.closest) return;
+  const opener = t.closest('[data-open-settings]');
+  const modal = boardSettingsModal();
+  if (opener && modal) { event.preventDefault(); modal.hidden = false; return; }
+  const closer = t.closest('[data-close-settings]');
+  if (closer && modal) { event.preventDefault(); boardSettingsRevert(boardSettingsForm()); modal.hidden = true; return; }
+  const reset = t.closest('[data-reset-colours]');
+  if (reset) {
+    event.preventDefault();
+    const form = boardSettingsForm();
+    form.querySelectorAll('[data-colour-var]').forEach(function(input) { input.value = input.dataset.default; });
+    boardSettingsPreviewColours(form);
+  }
+}
+function boardSettingsInput(event) {
+  const t = event.target;
+  if (!t.closest || !t.closest('[data-settings-form]')) return;
+  if (t.matches('[data-label-mode]')) boardApplyLabelMode(t.value);
+  if (t.matches('[data-colour-var]')) document.documentElement.style.setProperty(t.dataset.colourVar, t.value);
+}
+function boardSettingsSubmit(event) {
+  const form = event.target;
+  if (!form.matches || !form.matches('[data-settings-form]') || !window.fetch || typeof FormData === 'undefined') return;
+  event.preventDefault();
+  fetch(form.getAttribute('action') || './', {method: 'POST', body: new FormData(form), credentials: 'same-origin'})
+    .then(function(response) { if (!response.ok) throw new Error('Settings save failed'); return fetch('./?board_version=1', {credentials: 'same-origin', cache: 'no-store'}); })
+    .then(function(response) { return response.json(); })
+    .then(function(data) {
+      if (data && data.version) boardVersion = data.version;
+      form.querySelectorAll('[data-colour-var]').forEach(function(input) { input.dataset.saved = input.value; });
+      const checked = form.querySelector('[data-label-mode]:checked');
+      if (checked) form.dataset.savedMode = checked.value;
+      boardSettingsModal().hidden = true;
+    })
+    .catch(function() { window.alert('Settings could not be saved. Your edits are untouched; try again.'); });
+}
+document.addEventListener('click', boardSettingsClick);
+document.addEventListener('input', boardSettingsInput);
+document.addEventListener('change', boardSettingsInput);
+document.addEventListener('submit', boardSettingsSubmit, true);
 document.addEventListener('keydown', boardAbortRecordingOnEscape, true);
 document.addEventListener('DOMContentLoaded', boardInitRecorder);
 document.addEventListener('DOMContentLoaded', boardInitVoiceScopeModals);

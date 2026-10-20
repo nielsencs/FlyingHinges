@@ -18,7 +18,7 @@
   <h1 class="luke-wordmark" aria-label="LUKE">
     <span class="luke-letter">L<span>ogical</span></span>&nbsp;<span class="luke-letter">U<span>nifying</span></span>&nbsp;<span class="luke-letter">K<span>nowledge</span></span>&nbsp;<span class="luke-letter">E<span>ngine</span></span>
   </h1>
-  <div class="demo-controls"><a class="button small subtle" href="<?= h('?' . http_build_query(['view' => 'settings'] + $fullContextQuery)) ?>">Settings</a> <?= project_demo_toggle_html() ?></div>
+  <div class="demo-controls"><a class="button small subtle" data-open-settings href="<?= h('?' . http_build_query(['view' => 'settings'] + $fullContextQuery)) ?>">Settings</a> <?= project_demo_toggle_html() ?></div>
   <div class="muted">LUKE Areas, Focuses and Items.<br> Updated <?= h((string)($board['updated_at'] ?? '')) ?>.</div>
   <div class="remote-update-notice muted" hidden>Update available; save or reload to avoid losing your edits.</div>
 </header>
@@ -26,6 +26,7 @@
 <?php include __DIR__ . '/item-filters.php'; ?>
 </div>
 <main>
+<?= project_settings_form_html($board, $cancelUrl, $returnContextInputs, $view === 'settings') ?>
 <?php include __DIR__ . '/edit-modals.php'; ?>
 <section class="task-list-section">
   <form id="empty-bin" method="post" onsubmit="return confirm('Permanently delete everything in the Bin? This cannot be undone.')"><input type="hidden" name="action" value="empty_bin"><?= $returnContextInputs ?></form>
