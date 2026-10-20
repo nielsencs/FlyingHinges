@@ -227,6 +227,28 @@ function project_add_item(array $board, array $input): array {
     return project_normalise_board($board);
 }
 
+function project_duplicate_item(array $board, array $input): array {
+    $id = (int)project_field($input, 'id', '0');
+    foreach ($board['items'] ?? [] as $todo) {
+        if ((int)($todo['id'] ?? 0) !== $id) { continue; }
+        $now = project_now();
+        $board['items'][] = [
+            'id' => project_next_item_id($board),
+            'section' => (string)($todo['section'] ?? ''),
+            'project' => (string)($todo['project'] ?? ''),
+            'priority' => (string)($todo['priority'] ?? ''),
+            'order' => (int)($todo['order'] ?? 1),
+            'status' => 'Open',
+            'title' => (string)($todo['title'] ?? ''),
+            'notes' => '',
+            'changed_at' => $now,
+            'updated_at' => $now,
+        ];
+        return project_normalise_board($board);
+    }
+    return $board;
+}
+
 function project_ready_handoff_note_present(string $notes): bool {
     $lower = strtolower($notes);
     return str_contains($lower, 'joel update:')

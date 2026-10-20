@@ -9,6 +9,7 @@ function project_apply_action(array $board, array $post, array $files = []): arr
         'update_project' => project_update_project($board, $post),
         'delete_project' => project_delete_project($board, $post),
         'add_item' => project_add_item($board, $post),
+        'duplicate_item' => project_duplicate_item($board, $post),
         'update_item' => project_update_item($board, $post),
         'move_item_scope' => project_move_item_scope($board, $post),
         'clear_item_changed' => project_clear_item_changed($board, $post),
@@ -126,6 +127,11 @@ function project_redirect_after_action(array $board, array $post): string {
             }
             break;
         }
+    }
+    if ($hasReturnContext && $action === 'duplicate_item' && project_field($post, 'id') !== '') {
+        $maxId = 0;
+        foreach ($board['items'] ?? [] as $todo) { $maxId = max($maxId, (int)($todo['id'] ?? 0)); }
+        if ($maxId > (int)project_field($post, 'id')) { $query['just_edited_item_id'] = (string)$maxId; }
     }
     return './?' . http_build_query($query);
 }
