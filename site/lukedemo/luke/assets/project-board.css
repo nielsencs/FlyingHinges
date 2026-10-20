@@ -979,5 +979,7 @@ summary {
 .setting-palettes { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-bottom: 8px; }
 .setting-colours { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; }
 .setting-colour-col h4 { margin: 4px 0; font-size: 12px; color: var(--muted, var(--ink)); }
-.setting-colour { display: flex; align-items: center; justify-content: space-between; gap: 6px; font-size: 13px; margin: 4px 0; }
+.setting-colour-col { display: grid; grid-template-columns: max-content max-content; justify-content: start; align-items: center; gap: 4px 8px; }
+.setting-colour-col h4 { grid-column: 1 / -1; }
+.setting-colour { display: contents; font-size: 13px; }
 .setting-colour input[type="color"] { flex: 0 0 auto; width: 32px; height: 32px; min-width: 0; padding: 2px; margin: 0; }
