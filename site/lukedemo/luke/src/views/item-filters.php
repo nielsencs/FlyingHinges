@@ -1,6 +1,6 @@
 <?php
 ?>
-<details class="items-disclosure"<?= $itemsFilterJustApplied ? '' : ' open' ?>><summary>Items: <?= h($itemsFilterLabel) ?></summary>
+<details class="items-disclosure"<?= $itemsFilterJustApplied ? '' : ' open' ?>><summary>Items: <?= h($itemsFilterLabel) ?><?php if ($sectionFilter === '' && $projectFilter === '' && ($taskStatusQuery === '' || in_array('Bin', explode(',', $taskStatusQuery), true)) && count(array_filter($board['items'] ?? [], 'project_item_is_binned')) > 0): ?> <button class="subtle danger empty-bin-button" form="empty-bin" type="submit">Empty bin</button><?php endif; ?></summary>
   <div class="items-panel">
     <form class="toolbar" method="get">
       <input type="hidden" name="section_filter" value="<?= h($sectionFilter) ?>">
@@ -13,7 +13,6 @@
       <div><label>Priority</label><select name="task_priority" onchange="boardDropdownChanged(this)"><?= project_filter_options(project_priority_values(), $taskPriority) ?></select></div>
       <div><label>Sort</label><select name="task_sort" onchange="boardDropdownChanged(this)"><?= project_sort_options($taskSort) ?></select></div>
       <a class="button subtle" href="?<?= h(http_build_query(['section_filter' => $sectionFilter, 'project_filter' => $projectFilter])) ?>">Reset filters</a>
-      <?php if ($sectionFilter === '' && $projectFilter === '' && ($taskStatusQuery === '' || in_array('Bin', explode(',', $taskStatusQuery), true)) && count(array_filter($board['items'] ?? [], 'project_item_is_binned')) > 0): ?><div><label>Bin</label><button class="subtle danger" form="empty-bin" type="submit">Empty bin</button></div><?php endif; ?>
       <?php if (project_backup_files()): ?><div><label>Safety</label><button class="subtle" form="undo-last-change" type="submit">Undo last change</button></div><?php endif; ?>
     </form>
   </div>

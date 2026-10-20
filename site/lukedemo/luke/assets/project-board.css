@@ -983,3 +983,5 @@ summary {
 .setting-colour-col h4 { grid-column: 1 / -1; }
 .setting-colour { display: contents; font-size: 13px; }
 .setting-colour input[type="color"] { flex: 0 0 auto; width: 32px; height: 32px; min-width: 0; padding: 2px; margin: 0; }
+
+.items-disclosure > summary .empty-bin-button { margin-left: auto; font-size: 11px; padding: 2px 8px; min-height: 0; line-height: 1.3; }
