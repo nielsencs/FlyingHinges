@@ -990,7 +990,7 @@ summary {
 /* AI model limit meter: compact flat VU bars */
 .limit-meter {
   position: absolute;
-  top: 14px;
+  top: 7px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 1;
