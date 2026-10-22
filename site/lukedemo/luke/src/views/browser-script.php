@@ -848,17 +848,26 @@ function boardSafeNoteImageHtml(image) {
   const alt = (image.getAttribute('alt') || 'Pasted image').trim() || 'Pasted image';
   return '<img src="' + src.replaceAll('"', '&quot;') + '" alt="' + boardEscapeNoteText(alt).replaceAll('"', '&quot;') + '" loading="lazy" class="note-image">';
 }
-function boardSafeNoteHtml(node) {
+function boardPlainTextToNoteHtml(text) {
+  return boardEscapeNoteText(String(text || '').replace(/\r\n?/g, '\n')).replaceAll('\n', '<br>');
+}
+function boardNodeKeepsNewlines(node) {
+  const tag = (node.tagName || '').toLowerCase();
+  if (tag === 'pre' || tag === 'textarea') return true;
+  const style = (node.getAttribute && node.getAttribute('style')) || '';
+  return /white-space\s*:\s*(pre|pre-wrap|pre-line|break-spaces)/i.test(style);
+}
+function boardSafeNoteHtml(node, keepNewlines) {
   let html = '';
   node.childNodes.forEach(function(child) {
-    if (child.nodeType === Node.TEXT_NODE) { html += boardEscapeNoteText(child.textContent); return; }
+    if (child.nodeType === Node.TEXT_NODE) { if (!keepNewlines && /^\s*[\r\n]\s*$/.test(child.textContent)) return; html += keepNewlines ? boardPlainTextToNoteHtml(child.textContent) : boardEscapeNoteText(child.textContent.replace(/\s*[\r\n]+\s*/g, ' ')); return; }
     if (child.nodeType !== Node.ELEMENT_NODE) return;
     let tag = child.tagName.toLowerCase();
     if (tag === 'b') tag = 'strong';
     if (tag === 'i') tag = 'em';
     if (tag === 'br') { html += '<br>'; return; }
     if (tag === 'img') { html += boardSafeNoteImageHtml(child); return; }
-    const contents = boardSafeNoteHtml(child);
+    const contents = boardSafeNoteHtml(child, keepNewlines || boardNodeKeepsNewlines(child));
     if (['sup', 'sub', 'strong', 'em'].includes(tag)) { html += '<' + tag + '>' + contents + '</' + tag + '>'; return; }
     if (['div', 'p'].includes(tag)) {
       const blockContents = contents.replace(/^(?:<br>)+|(?:<br>)+$/g, '');
@@ -920,11 +929,14 @@ function boardPasteFormattedNote(event) {
   const imageItems = Array.from(clipboard.items || []).filter(function(item) {
     return item.kind === 'file' && item.type && item.type.startsWith('image/');
   });
-  const source = clipboard.getData('text/html') || boardEscapeNoteText(clipboard.getData('text/plain'));
-  if (source !== '') {
+  const htmlSource = clipboard.getData('text/html');
+  if (htmlSource !== '') {
     const staging = document.createElement('div');
-    staging.innerHTML = source;
+    staging.innerHTML = htmlSource;
     document.execCommand('insertHTML', false, boardSafeNoteHtml(staging));
+  } else {
+    const plain = boardPlainTextToNoteHtml(clipboard.getData('text/plain'));
+    if (plain !== '') document.execCommand('insertHTML', false, plain);
   }
   if (imageItems.length === 0) return;
   Promise.all(imageItems.map(function(item) {
