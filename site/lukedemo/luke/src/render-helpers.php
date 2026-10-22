@@ -733,18 +733,18 @@ function project_limit_meter_html(): string {
         $raw = $meter['remaining'] ?? null;
         $remaining = is_numeric($raw) ? max(0, min(100, (int)round((float)$raw))) : null;
         $level = $stale ? 'unknown' : project_quota_level($remaining);
-        $label = trim((string)($meter['label'] ?? $meter['id'] ?? ''));
+        $full = trim((string)($meter['label'] ?? $meter['id'] ?? ''));
+        $label = trim((string)($meter['id'] ?? $full));
         $reset = trim((string)($meter['reset'] ?? ''));
         $pct = $remaining === null ? '?' : $remaining . '%';
         $segments = '';
-        for ($i = 0; $i < 20; $i++) {
-            $lit = $remaining !== null && !$stale && ($i + 1) * 5 <= $remaining + 4;
+        for ($i = 0; $i < 10; $i++) {
+            $lit = $remaining !== null && !$stale && ($i + 1) * 10 <= $remaining + 9;
             $segments .= '<i' . ($lit ? ' class="on"' : '') . '></i>';
         }
-        $bars .= '<div class="limit-bar" data-level="' . h($level) . '" title="' . h($label . ': ' . $pct . ' left' . ($reset !== '' ? ', resets ' . $reset : '')) . '">'
+        $bars .= '<div class="limit-bar" data-level="' . h($level) . '" title="' . h($full . ': ' . $pct . ' left' . ($reset !== '' ? ', resets ' . $reset : '')) . '">'
             . '<div class="limit-label"><span>' . h($label) . '</span><b>' . h($pct) . '</b></div>'
             . '<div class="limit-track" aria-hidden="true">' . $segments . '</div>'
-            . '<div class="limit-reset">' . ($reset !== '' ? 'resets ' . h($reset) : '&nbsp;') . '</div>'
             . '</div>';
     }
     if ($bars === '') {
