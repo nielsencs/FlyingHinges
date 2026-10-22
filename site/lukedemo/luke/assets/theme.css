@@ -17,6 +17,12 @@
   --header-start: #151b26;
   --header-end: #10131a;
 
+  --meter-ok: #63ffa2;
+  --meter-warn: #ffd479;
+  --meter-low: #ff5656;
+  --meter-off: #232a38;
+  --meter-unknown: #616161;
+
   --priority-must-bg: #63ffa2;
   --priority-should-bg: #c0ff7b; /* was #fdff7b; we may go back to this! */
   --priority-could-bg: #ffb764;

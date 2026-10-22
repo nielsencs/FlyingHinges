@@ -23,6 +23,14 @@ function project_activity_path(): string {
     return dirname(project_data_path()) . '/activity.json';
 }
 
+function project_quota_path(): string {
+    $path = getenv('PROJECT_BOARD_QUOTA_PATH');
+    if ($path !== false && trim($path) !== '') {
+        return $path;
+    }
+    return dirname(project_data_path()) . '/quota.json';
+}
+
 function project_now(): string {
     return gmdate('Y-m-d H:i') . ' UTC';
 }

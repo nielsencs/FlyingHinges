@@ -694,3 +694,62 @@ function project_task_style(array $item): string { return project_item_style($it
 function project_todo_needs_voice_scope_prompt(array $item): bool { return project_item_needs_voice_scope_prompt($item); }
 function project_todo_update_hidden_inputs(array $item, array $overrides = [], array $contextQuery = []): string { return project_item_update_hidden_inputs($item, $overrides, $contextQuery); }
 function project_filter_and_sort_todos(array $items, string $sectionFilter, string $projectFilter, string $taskQ, mixed $taskStatus, string $taskPriority, string $taskSort): array { return project_filter_and_sort_items($items, $sectionFilter, $projectFilter, $taskQ, $taskStatus, $taskPriority, $taskSort); }
+
+const PROJECT_QUOTA_STALE_SECONDS = 900;
+const PROJECT_QUOTA_LOW_PERCENT = 5;
+
+function project_quota_read(): ?array {
+    $path = project_quota_path();
+    if (!is_file($path) || !is_readable($path)) {
+        return null;
+    }
+    $data = json_decode((string)file_get_contents($path), true);
+    if (!is_array($data) || !is_array($data['meters'] ?? null) || $data['meters'] === []) {
+        return null;
+    }
+    return $data;
+}
+
+function project_quota_level(?int $remaining): string {
+    if ($remaining === null) return 'unknown';
+    if ($remaining < PROJECT_QUOTA_LOW_PERCENT) return 'low';
+    if ($remaining < 25) return 'warn';
+    return 'ok';
+}
+
+function project_limit_meter_html(): string {
+    if (project_demo_mode()) {
+        return '';
+    }
+    $data = project_quota_read();
+    if ($data === null) {
+        return '';
+    }
+    $updated = strtotime((string)($data['updated'] ?? ''));
+    $stale = $updated === false || (time() - $updated) > PROJECT_QUOTA_STALE_SECONDS;
+    $bars = '';
+    foreach ($data['meters'] as $meter) {
+        if (!is_array($meter)) continue;
+        $raw = $meter['remaining'] ?? null;
+        $remaining = is_numeric($raw) ? max(0, min(100, (int)round((float)$raw))) : null;
+        $level = $stale ? 'unknown' : project_quota_level($remaining);
+        $label = trim((string)($meter['label'] ?? $meter['id'] ?? ''));
+        $reset = trim((string)($meter['reset'] ?? ''));
+        $pct = $remaining === null ? '?' : $remaining . '%';
+        $segments = '';
+        for ($i = 0; $i < 20; $i++) {
+            $lit = $remaining !== null && !$stale && ($i + 1) * 5 <= $remaining + 4;
+            $segments .= '<i' . ($lit ? ' class="on"' : '') . '></i>';
+        }
+        $bars .= '<div class="limit-bar" data-level="' . h($level) . '" title="' . h($label . ': ' . $pct . ' left' . ($reset !== '' ? ', resets ' . $reset : '')) . '">'
+            . '<div class="limit-label"><span>' . h($label) . '</span><b>' . h($pct) . '</b></div>'
+            . '<div class="limit-track" aria-hidden="true">' . $segments . '</div>'
+            . '<div class="limit-reset">' . ($reset !== '' ? 'resets ' . h($reset) : '&nbsp;') . '</div>'
+            . '</div>';
+    }
+    if ($bars === '') {
+        return '';
+    }
+    $note = $stale ? '<div class="limit-stale-note">Stale: last reading is over 15 minutes old</div>' : '';
+    return '<div class="limit-meter' . ($stale ? ' stale' : '') . '" role="group" aria-label="AI model limits remaining">' . $bars . $note . '</div>';
+}
