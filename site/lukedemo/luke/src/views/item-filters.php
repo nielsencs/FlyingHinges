@@ -17,7 +17,7 @@
     </form>
   </div>
 </details>
-<div class="record-controls"><button type="button" class="record-abort-button danger" hidden aria-label="Abort voice note recording without saving">Abort</button><button type="button" class="record-button" aria-label="Record a voice note" aria-pressed="false">Record</button><button type="button" class="button add-item-button" data-open-add-item-modal>Add item</button><?= project_limit_meter_html() ?></div>
+<div class="record-controls"><button type="button" class="record-abort-button danger" hidden aria-label="Abort voice note recording without saving">Abort</button><button type="button" class="record-button" aria-label="Record a voice note" aria-pressed="false">Record</button><button type="button" class="button add-item-button" data-open-add-item-modal>Add item</button></div><?= project_limit_meter_html() ?>
 <div class="modal-backdrop add-item-modal" hidden data-add-item-modal>
   <form method="post" class="modal task-edit dirty-watch add-task-form">
     <input type="hidden" name="action" value="add_item">

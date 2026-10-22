@@ -988,11 +988,12 @@ summary {
 .items-disclosure > summary .empty-bin-button { margin-left: auto; width: auto; flex: 0 0 auto; }
 
 /* AI model limit meter: compact flat VU bars */
-.limit-meter,
-.record-controls .limit-meter {
-  grid-column: 1 / -1;
-  grid-row: 3;
-  justify-self: end;
+.limit-meter {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1;
   width: 230px;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1029,3 +1030,5 @@ summary {
 .limit-bar[data-level="unknown"] .limit-track i.on { background: var(--meter-unknown); }
 .limit-meter.stale { opacity: .55; filter: grayscale(1); }
 .limit-stale-note { grid-column: 1 / -1; font-size: 10px; color: #7a4b00; }
+
+@media (max-width:640px) { .limit-meter { width: 170px; } }
