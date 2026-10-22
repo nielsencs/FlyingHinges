@@ -13,7 +13,7 @@
 <?php include __DIR__ . '/browser-script.php'; ?>
 </head>
 <body>
-<div class="sticky-board-top"><?= project_limit_meter_html() ?><header>
+<div class="sticky-board-top"><header>
   <?= project_site_agent_active_light($activeItemId, ['section_filter' => $sectionFilter, 'project_filter' => $projectFilter]) ?>
   <h1 class="luke-wordmark" aria-label="LUKE">
     <span class="luke-letter">L<span>ogical</span></span>&nbsp;<span class="luke-letter">U<span>nifying</span></span>&nbsp;<span class="luke-letter">K<span>nowledge</span></span>&nbsp;<span class="luke-letter">E<span>ngine</span></span>

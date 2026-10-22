@@ -18,6 +18,7 @@ body {
 }
 
 header {
+  position: relative;
   padding: 20px clamp(16px, 4vw, 40px);
   border-bottom: 1px solid var(--line);
   background: linear-gradient(177deg, var(--header-start), var(--header-end));
@@ -987,17 +988,26 @@ summary {
 .items-disclosure > summary .empty-bin-button { margin-left: auto; width: auto; flex: 0 0 auto; }
 
 /* AI model limit meter: compact flat VU bars */
-.limit-meter {
+.limit-meter,
+.record-controls .limit-meter {
+  grid-column: 1 / -1;
+  grid-row: 3;
+  justify-self: end;
+  width: 150px;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 4px 8px;
-  padding: 3px clamp(8px, 2vw, 20px);
-  background: #0a0d12;
-  border-bottom: 1px solid var(--line);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 3px 6px;
+  padding: 3px 5px;
+  background:
+    repeating-linear-gradient(90deg, rgba(255,255,255,.18) 0 1px, rgba(0,0,0,.06) 1px 2px, rgba(255,255,255,.10) 2px 3px),
+    linear-gradient(180deg, #e9ecef 0%, #b9bec5 48%, #d8dce1 100%);
+  border: 1px solid #8a9099;
+  border-radius: 3px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.7), 0 1px 3px var(--shadow);
 }
 .limit-bar { min-width: 0; display: flex; align-items: center; gap: 4px; }
-.limit-label { display: flex; gap: 4px; font-size: 10px; line-height: 1; color: var(--muted); white-space: nowrap; }
-.limit-label b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+.limit-label { display: flex; gap: 4px; font-size: 10px; line-height: 1; color: #2b313b; white-space: nowrap; }
+.limit-label b { color: #10141a; font-weight: 600; font-variant-numeric: tabular-nums; }
 .limit-track {
   flex: 1 1 auto;
   min-width: 0;
@@ -1013,10 +1023,7 @@ summary {
 .limit-bar[data-level="ok"] .limit-track i.on { background: var(--meter-ok); }
 .limit-bar[data-level="warn"] .limit-track i.on { background: var(--meter-warn); }
 .limit-bar[data-level="low"] .limit-track i.on { background: var(--meter-low); }
-.limit-bar[data-level="low"] .limit-label b { color: var(--meter-low); }
+.limit-bar[data-level="low"] .limit-label b { color: #b00020; }
 .limit-bar[data-level="unknown"] .limit-track i.on { background: var(--meter-unknown); }
 .limit-meter.stale { opacity: .55; filter: grayscale(1); }
-.limit-stale-note { grid-column: 1 / -1; font-size: 10px; color: var(--warn); }
-@media (max-width: 480px) {
-  .limit-meter { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
+.limit-stale-note { grid-column: 1 / -1; font-size: 10px; color: #7a4b00; }
