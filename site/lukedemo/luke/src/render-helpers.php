@@ -62,6 +62,7 @@ function project_render_formatted_notes(string $text): string {
 
 function project_render_formatted_notes_editor(string $notes = ''): string {
     return '<label>Notes</label><textarea name="notes" data-formatted-notes-storage hidden>' . h($notes) . '</textarea>'
+        . ($notes === '' ? '' : '<input type="hidden" name="notes_base" value="' . h(sha1(project_normalise_notes_text($notes))) . '">')
         . '<div class="formatted-notes-editor" contenteditable="true" role="textbox" aria-multiline="true" data-formatted-notes-editor data-note-stamp="1" data-note-stamp-user="' . h(project_note_stamp_user()) . '">'
         . project_render_formatted_notes($notes) . '</div>';
 }

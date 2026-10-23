@@ -276,6 +276,28 @@ function project_ready_handoff_guardrail(string $notes): string {
     return $prefix === '' ? ltrim($entry) : $prefix . $entry;
 }
 
+function project_merge_stale_notes(string $stored, string $incoming, string $baseHash): string {
+    // The edit form carries a hash of the notes it was loaded with. If the stored notes have
+    // moved on since (e.g. a Joel handoff), never let the older page overwrite them: keep the
+    // stored notes and append only what the user added after the shared leading paragraphs.
+    $stored = project_normalise_notes_text($stored);
+    $incoming = project_normalise_notes_text($incoming);
+    if ($baseHash === '' || hash_equals($baseHash, sha1($stored))) {
+        return $incoming;
+    }
+    if ($incoming === $stored || hash_equals($baseHash, sha1($incoming))) {
+        return $stored;
+    }
+    $a = explode("\n\n", $stored);
+    $b = explode("\n\n", $incoming);
+    $k = 0;
+    while ($k < count($a) && $k < count($b) && $a[$k] === $b[$k]) {
+        $k++;
+    }
+    $added = trim(implode("\n\n", array_slice($b, $k)));
+    return $added === '' ? $stored : project_stamp_appended_note_text($stored, $stored . "\n\n" . $added);
+}
+
 function project_update_item(array $board, array $input): array {
     $id = (int)($input['id'] ?? 0);
     foreach ($board['items'] as &$todo) {
@@ -287,6 +309,7 @@ function project_update_item(array $board, array $input): array {
             foreach (['priority', 'status', 'title', 'notes'] as $key) {
                 if ($key === 'notes') {
                     $incomingNotes = project_field($input, $key, (string)($todo[$key] ?? ''));
+                    $incomingNotes = project_merge_stale_notes((string)($todo[$key] ?? ''), $incomingNotes, project_field($input, 'notes_base'));
                     $todo[$key] = project_stamp_appended_note_text((string)($todo[$key] ?? ''), $incomingNotes);
                 } else {
                     $todo[$key] = project_field($input, $key, (string)($todo[$key] ?? ''));
