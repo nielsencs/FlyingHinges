@@ -11,6 +11,10 @@
           <input type="hidden" name="priority" value="<?= h((string)($todo['priority'] ?? '')) ?>">
           <input type="hidden" name="order" value="<?= h((string)((int)($todo['order'] ?? 1))) ?>">
           <input type="hidden" name="status" value="<?= h((string)($todo['status'] ?? 'Open')) ?>">
+          <input type="hidden" name="base_status" value="<?= h((string)($todo['status'] ?? 'Open')) ?>">
+          <input type="hidden" name="base_priority" value="<?= h((string)($todo['priority'] ?? '')) ?>">
+          <input type="hidden" name="base_order" value="<?= h((string)((int)($todo['order'] ?? 1))) ?>">
+          <input type="hidden" name="base_title" value="<?= h((string)($todo['title'] ?? '')) ?>">
           <div><label>Title</label><input name="title" value="<?= h((string)($todo['title'] ?? '')) ?>"></div>
           <div class="notes-field"><?= project_render_formatted_notes_editor((string)($todo['notes'] ?? '')) ?><?= project_render_found_links($todo) ?><?= project_render_file_attachments($todo) ?><?= project_render_audio_attachment($todo) ?><?= project_render_voice_note_scope_prompt($sections, $projects, $todo, $scopeContextQuery) ?></div>
           <div class="task-actions center-actions"><?php if ($todoIsBinned): ?><button class="small" form="restore-task-<?= h((string)$todo['id']) ?>">Undo</button><button class="small danger" form="hard-delete-task-<?= h((string)$todo['id']) ?>">Hard delete</button><?php else: ?><button class="small">Save</button><button class="small danger" form="delete-task-<?= h((string)$todo['id']) ?>">Bin</button><button class="small" form="duplicate-task-<?= h((string)$todo['id']) ?>" title="New Open item with the same title, area, focus and priority, but no notes">Duplicate</button><?php endif; ?></div>

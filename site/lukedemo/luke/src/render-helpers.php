@@ -541,6 +541,12 @@ function project_item_update_hidden_inputs(array $todo, array $overrides = [], a
     foreach ($overrides as $key => $value) {
         $values[$key] = (string)$value;
     }
+    // Values as loaded, so the save can tell what the user actually changed.
+    $values['base_status'] = (string)($todo['status'] ?? 'Open');
+    $values['base_priority'] = (string)($todo['priority'] ?? '');
+    $values['base_title'] = (string)($todo['title'] ?? '');
+    $values['base_order'] = (string)((int)($todo['order'] ?? 1));
+    $values['notes_base'] = sha1(project_normalise_notes_text((string)($todo['notes'] ?? '')));
 
     $html = '';
     foreach ($values as $name => $value) {

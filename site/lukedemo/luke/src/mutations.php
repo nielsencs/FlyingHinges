@@ -312,13 +312,21 @@ function project_update_item(array $board, array $input): array {
                     $incomingNotes = project_merge_stale_notes((string)($todo[$key] ?? ''), $incomingNotes, project_field($input, 'notes_base'));
                     $todo[$key] = project_stamp_appended_note_text((string)($todo[$key] ?? ''), $incomingNotes);
                 } else {
-                    $todo[$key] = project_field($input, $key, (string)($todo[$key] ?? ''));
+                    $incoming = project_field($input, $key, (string)($todo[$key] ?? ''));
+                    // Forms carry the value they loaded with; if the form did not change it,
+                    // keep the stored value so an older page cannot revert newer changes.
+                    if (array_key_exists('base_' . $key, $input) && project_field($input, 'base_' . $key) === $incoming) {
+                        continue;
+                    }
+                    $todo[$key] = $incoming;
                 }
             }
             if ($previousStatus !== 'Ready' && (string)($todo['status'] ?? '') === 'Ready') {
                 $todo['notes'] = project_ready_handoff_guardrail((string)($todo['notes'] ?? ''));
             }
-            $todo['order'] = max(1, min(50, (int)project_field($input, 'order', (string)($todo['order'] ?? 1))));
+            if (!array_key_exists('base_order', $input) || project_field($input, 'base_order') !== project_field($input, 'order')) {
+                $todo['order'] = max(1, min(50, (int)project_field($input, 'order', (string)($todo['order'] ?? 1))));
+            }
             $now = project_now();
             $todo['changed_at'] = $now;
             $todo['updated_at'] = $now;
