@@ -837,6 +837,12 @@ button.danger,
   box-shadow: none;
 }
 
+.add-task-form {
+  width: min(900px, calc(100vw - 24px));
+  max-height: calc(100vh - 24px);
+  overflow: auto;
+}
+
 .item-focus-dialog {
   width: min(900px, calc(100vw - 24px));
   max-height: calc(100vh - 24px);
@@ -1032,3 +1038,6 @@ summary {
 .limit-stale-note { grid-column: 1 / -1; font-size: 10px; color: #7a4b00; }
 
 @media (max-width:640px) { .limit-meter { width: 170px; } }
+
+.backup-history { max-height: 80vh; overflow-y: auto; }
+.backup-history .history-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 6px 0; border-bottom: 1px solid rgba(128,128,128,.25); }

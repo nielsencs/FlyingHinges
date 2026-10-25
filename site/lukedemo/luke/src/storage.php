@@ -60,6 +60,58 @@ function project_restore_latest_backup(): bool {
 }
 
 
+function project_backup_history(): array {
+    $rows = [];
+    foreach (project_backup_files() as $file) {
+        $name = basename($file);
+        $time = '';
+        if (preg_match('/^board-(\d{8})-(\d{6})-/', $name, $m)) {
+            $dt = DateTime::createFromFormat('YmdHis', $m[1] . $m[2], new DateTimeZone('UTC'));
+            if ($dt) {
+                $time = $dt->setTimezone(new DateTimeZone('Europe/London'))->format('Y-m-d H:i:s');
+            }
+        }
+        $data = json_decode((string)@file_get_contents($file), true);
+        $rows[] = [
+            'name' => $name,
+            'time' => $time,
+            'items' => is_array($data) && isset($data['items']) && is_array($data['items']) ? count($data['items']) : 0,
+        ];
+    }
+    return $rows;
+}
+
+function project_restore_backup_by_name(string $name): bool {
+    if (!preg_match('/^board-[0-9A-Za-z-]+\.json$/', $name)) {
+        return false;
+    }
+    $source = project_backup_dir() . '/' . $name;
+    if (!is_file($source)) {
+        return false;
+    }
+    $data = json_decode((string)file_get_contents($source), true);
+    if (!is_array($data) || !isset($data['items']) || !is_array($data['items'])) {
+        return false;
+    }
+    $path = project_data_path();
+    $dir = dirname($path);
+    if (!is_dir($dir)) {
+        mkdir($dir, 0770, true);
+    }
+    if (is_file($path)) {
+        project_create_backup();
+    }
+    $tmp = $path . '.restore.' . getmypid();
+    if (!copy($source, $tmp)) {
+        return false;
+    }
+    @chmod($tmp, 0660);
+    rename($tmp, $path);
+    @chmod($path, 0660);
+    return true;
+}
+
+
 function project_audio_dir(): string {
     $dir = dirname(project_data_path()) . '/audio';
     if (!is_dir($dir)) {

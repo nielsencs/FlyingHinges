@@ -13,7 +13,7 @@
       <div><label>Priority</label><select name="task_priority" onchange="boardDropdownChanged(this)"><?= project_filter_options(project_priority_values(), $taskPriority) ?></select></div>
       <div><label>Sort</label><select name="task_sort" onchange="boardDropdownChanged(this)"><?= project_sort_options($taskSort) ?></select></div>
       <a class="button subtle" href="?<?= h(http_build_query(['section_filter' => $sectionFilter, 'project_filter' => $projectFilter])) ?>">Reset filters</a>
-      <?php if (project_backup_files()): ?><div><label>Safety</label><button class="subtle" form="undo-last-change" type="submit">Undo last change</button></div><?php endif; ?>
+      <?php if (project_backup_files()): ?><div><label>Safety</label><button class="subtle" form="undo-last-change" type="submit">Undo last change</button></div><div><label>History</label><a class="button subtle" href="<?= h(project_url(['view' => 'history'] + $fullContextQuery)) ?>">Backup history</a></div><?php endif; ?>
     </form>
   </div>
 </details>
@@ -23,11 +23,11 @@
     <input type="hidden" name="action" value="add_item">
     <?= $returnContextInputs ?>
     <h2>Add item</h2>
+    <div><label>Title</label><input name="title" placeholder="New item"></div>
+    <div class="notes-field"><?= project_render_formatted_notes_editor() ?></div>
     <div class="task-meta scope-meta"><div><label>Area</label><select name="section" data-add-item-section onchange="boardAddItemSectionChanged(this)"><?= project_section_scope_options($sections, $addItemSectionFilter) ?></select></div><div><label>Focus</label><select name="project" data-add-item-project onchange="boardAddItemProjectChanged(this)"><?= project_project_scope_options($projects, $addItemProjectFilter, $addItemSectionFilter, true) ?></select></div></div>
     <div class="scope-new-links"><a href="<?= project_url(['view' => 'add_section'] + $fullContextQuery) ?>">New Area...</a><a data-add-item-new-project href="<?= project_url(['view' => 'add_project', 'section_filter' => $addItemSectionFilter] + $fullContextQuery) ?>">New Focus...</a></div>
     <div class="task-meta"><div><label>Priority</label><select name="priority"><?= project_status_options(project_priority_values(), '') ?></select></div><div><label>Order</label><select name="order"><?= project_order_options(1) ?></select></div><div><label>Status</label><select name="status"><?= project_status_options(PROJECT_TODO_STATUSES, 'Open') ?></select></div></div>
-    <div><label>Title</label><input name="title" placeholder="New item"></div>
-    <div class="notes-field"><?= project_render_formatted_notes_editor() ?></div>
     <div class="actions center-actions add-item-actions"><button class="small equal-action">Add item</button><button type="button" class="small danger equal-action" data-close-add-item-modal>Cancel</button></div>
   </form>
 </div>

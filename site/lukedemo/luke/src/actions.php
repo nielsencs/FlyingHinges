@@ -88,7 +88,7 @@ function project_redirect_after_action(array $board, array $post): string {
             }
         }
     }
-    if ($hasReturnContext && in_array($action, ['save_settings', 'add_section', 'update_section', 'add_project', 'update_project', 'add_item', 'update_item', 'move_item_scope', 'clear_item_changed', 'improve_item_transcript', 'use_improved_item_transcript', 'delete_item', 'delete_item_audio', 'restore_item', 'hard_delete_item', 'empty_bin', 'add_todo', 'update_todo', 'move_todo_scope', 'clear_todo_changed', 'record_audio', 'delete_todo', 'delete_todo_audio', 'restore_todo', 'hard_delete_todo', 'undo_last_change'], true)) {
+    if ($hasReturnContext && in_array($action, ['save_settings', 'add_section', 'update_section', 'add_project', 'update_project', 'add_item', 'update_item', 'move_item_scope', 'clear_item_changed', 'improve_item_transcript', 'use_improved_item_transcript', 'delete_item', 'delete_item_audio', 'restore_item', 'hard_delete_item', 'empty_bin', 'add_todo', 'update_todo', 'move_todo_scope', 'clear_todo_changed', 'record_audio', 'delete_todo', 'delete_todo_audio', 'restore_todo', 'hard_delete_todo', 'undo_last_change', 'restore_backup'], true)) {
         $section = project_field($post, 'return_section');
         $project = project_field($post, 'return_project');
     }

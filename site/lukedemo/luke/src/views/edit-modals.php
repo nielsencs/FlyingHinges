@@ -1,6 +1,24 @@
 <?php
 ?>
-<?php if ($view === 'add_section' || $view === 'edit_section'): ?>
+<?php if ($view === 'history'): ?>
+<div class="modal-backdrop">
+  <div class="modal backup-history">
+    <h2>Backup history</h2>
+    <?php $historyRows = project_backup_history(); ?>
+    <?php if (!$historyRows): ?><p>No retained backups yet.</p><?php endif; ?>
+    <?php foreach ($historyRows as $historyRow): ?>
+    <form method="post" class="history-row" onsubmit="return confirm('Restore the board as it was at <?= h($historyRow['time']) ?>? Current state is backed up first.')">
+      <input type="hidden" name="action" value="restore_backup">
+      <input type="hidden" name="backup" value="<?= h($historyRow['name']) ?>">
+      <?= $returnContextInputs ?>
+      <span><?= h($historyRow['time']) ?> UK &middot; <?= h((string)$historyRow['items']) ?> items</span>
+      <button class="small">Restore</button>
+    </form>
+    <?php endforeach; ?>
+    <div class="actions center-actions"><a class="button small danger" href="<?= h($cancelUrl) ?>">Close</a></div>
+  </div>
+</div>
+<?php elseif ($view === 'add_section' || $view === 'edit_section'): ?>
 <?php $editingSection = $view === 'edit_section' && $selectedSection; ?>
 <div class="modal-backdrop">
   <form class="modal dirty-watch" method="post">
