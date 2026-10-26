@@ -843,10 +843,6 @@ button.danger,
   overflow: auto;
 }
 
-.add-task-form .formatted-notes-editor {
-  min-height: calc(10lh + 6px);
-}
-
 .item-focus-dialog {
   width: min(900px, calc(100vw - 24px));
   max-height: calc(100vh - 24px);

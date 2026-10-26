@@ -66,6 +66,14 @@ function project_render_formatted_notes_editor(string $notes = ''): string {
         . '<div class="formatted-notes-editor" contenteditable="true" role="textbox" aria-multiline="true" data-formatted-notes-editor data-note-stamp="1" data-note-stamp-user="' . h(project_note_stamp_user()) . '">'
         . project_render_formatted_notes($notes) . '</div>';
 }
+/** Shared by Add item and Edit item so both dialogs have the same layout: buttons, Title, Notes, buttons. */
+function project_render_item_title_notes_fields(string $title, string $notesHtml, string $buttons, string $titlePlaceholder = '', string $rowClass = '', bool $bottomButtons = true): string {
+    $row = 'task-actions center-actions' . ($rowClass !== '' ? ' ' . $rowClass : '');
+    return '<div class="task-actions task-actions-top center-actions' . ($rowClass !== '' ? ' ' . $rowClass : '') . '" data-item-title-notes-fields>' . $buttons . '</div>'
+        . '<div><label>Title</label><input name="title" value="' . h($title) . '"' . ($titlePlaceholder !== '' ? ' placeholder="' . h($titlePlaceholder) . '"' : '') . '></div>'
+        . '<div class="notes-field">' . $notesHtml . '</div>'
+        . ($bottomButtons ? '<div class="' . $row . '">' . $buttons . '</div>' : '');
+}
 function project_theme_key(string $value): string {
     $key = strtolower(str_replace(["'", '’'], '', trim($value)));
     $key = preg_replace('/[^a-z0-9]+/', '-', $key) ?? '';
