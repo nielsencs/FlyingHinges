@@ -565,6 +565,29 @@ function project_use_improved_item_transcript(array $board, array $input): array
     return project_normalise_board($board);
 }
 
+// Returns '' when the voice-note upload arrived intact, otherwise a short reason.
+// PHP silently discards over-limit uploads, so callers must check this before saving.
+function project_audio_upload_problem(array $files): string {
+    $upload = $files['audio'] ?? null;
+    if (!is_array($upload)) {
+        return 'missing';
+    }
+    $error = (int)($upload['error'] ?? UPLOAD_ERR_NO_FILE);
+    if ($error === UPLOAD_ERR_INI_SIZE || $error === UPLOAD_ERR_FORM_SIZE) {
+        return 'too_large';
+    }
+    if ($error !== UPLOAD_ERR_OK) {
+        return 'failed';
+    }
+    $tmp = (string)($upload['tmp_name'] ?? '');
+    return ($tmp !== '' && is_file($tmp)) ? '' : 'failed';
+}
+
+// True when PHP dropped the whole POST body (over post_max_size): a body was sent but nothing arrived.
+function project_post_body_dropped(array $post, array $files, string $contentLength): bool {
+    return !$post && !$files && (int)$contentLength > 0;
+}
+
 function project_record_audio_item(array $board, array $input): array {
     $upload = $input['audio'] ?? null;
     if (!is_array($upload) || (int)($upload['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {

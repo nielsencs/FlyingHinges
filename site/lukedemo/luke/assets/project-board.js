@@ -469,11 +469,14 @@ function boardUploadRecording(button) {
   form.append('task_sort', boardConfig.taskSort);
   form.append('audio', blob, 'voice-note.webm');
   fetch('./', {method: 'POST', body: form, credentials: 'same-origin'}).then(function(response) {
+    if (response.status === 413) { const tooBig = new Error('Upload rejected'); tooBig.rejected = true; throw tooBig; }
     if (!response.ok) throw new Error('Upload failed');
     boardGoToRecordedVoiceNoteContext();
   }).catch(function(error) {
     boardQueueRecordingForLater(blob, form).then(function() {
-      window.alert('Recording saved on this device. It will upload automatically when the connection returns.');
+      window.alert(error && error.rejected
+        ? 'The server did not receive this recording. It is saved on this device and will retry next time LUKE opens. Tell Joel.'
+        : 'Recording saved on this device. It will upload automatically when the connection returns.');
       button.disabled = false;
       button.textContent = 'Record';
       boardFlushQueuedRecordings();

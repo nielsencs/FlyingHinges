@@ -33,6 +33,15 @@ if (isset($_GET['board_version'])) {
     exit;
 }
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $droppedBody = project_post_body_dropped($_POST, $_FILES, (string)($_SERVER['CONTENT_LENGTH'] ?? ''));
+    $audioProblem = project_field($_POST, 'action') === 'record_audio' ? project_audio_upload_problem($_FILES) : '';
+    if ($droppedBody || $audioProblem !== '') {
+        // Do not report success: the browser keeps the recording and retries.
+        http_response_code(413);
+        header('Content-Type: text/plain; charset=utf-8');
+        echo 'Voice note did not arrive (' . ($droppedBody ? 'too_large' : $audioProblem) . ')';
+        exit;
+    }
     if (project_field($_POST, 'action') === 'undo_last_change') {
         project_restore_latest_backup();
         header('Location: ' . project_redirect_after_action($board, $_POST), true, 303);
