@@ -7,8 +7,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>LUKE<?= project_demo_mode() ? ' Demo' : '' ?></title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23254260'/%3E%3Cpath d='M43 7a15 15 0 0 0-17 20L9 44a6 6 0 0 0 8 8l17-17A15 15 0 0 0 54 18l-10 10-8-8L46 10a15 15 0 0 0-3-3z' fill='%23f3f5fa'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="<?= h(project_asset_base()) ?>theme.css">
-<link rel="stylesheet" href="<?= h(project_asset_base()) ?>project-board.css">
+<?php $assetDir = dirname(__DIR__, 2) . '/assets/'; $assetVer = static fn(string $f): string => is_file($assetDir . $f) ? (string)filemtime($assetDir . $f) : '0'; ?>
+<link rel="stylesheet" href="<?= h(project_asset_base()) ?>theme.css?v=<?= h($assetVer('theme.css')) ?>">
+<link rel="stylesheet" href="<?= h(project_asset_base()) ?>project-board.css?v=<?= h($assetVer('project-board.css')) ?>">
 <?= project_colour_overrides_css($board) ?>
 <?php include __DIR__ . '/browser-script.php'; ?>
 </head>
