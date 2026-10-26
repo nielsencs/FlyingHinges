@@ -724,11 +724,19 @@ function project_quota_level(?int $remaining): string {
     return 'ok';
 }
 
+function project_demo_quota_example(): array {
+    $day = static fn(int $d, string $t): string => gmdate('j/M', time() + $d * 86400) . ' ' . $t;
+    return ['updated' => gmdate('c'), 'meters' => [
+        ['id' => 'ClS', 'label' => 'Claude session', 'remaining' => 72, 'reset' => $day(0, '18:00')],
+        ['id' => 'ClW', 'label' => 'Claude week', 'remaining' => 18, 'reset' => $day(3, '09:00')],
+        ['id' => 'CoS', 'label' => 'Codex session', 'remaining' => 45, 'reset' => $day(0, '17:30')],
+        ['id' => 'CoW', 'label' => 'Codex week', 'remaining' => 3, 'reset' => $day(4, '09:00')],
+    ]];
+}
+
 function project_limit_meter_html(): string {
-    if (project_demo_mode()) {
-        return '';
-    }
-    $data = project_quota_read();
+    // Demo mode shows made-up amounts and never reads the real quota file.
+    $data = project_demo_mode() ? project_demo_quota_example() : project_quota_read();
     if ($data === null) {
         return '';
     }
