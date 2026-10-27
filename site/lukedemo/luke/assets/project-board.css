@@ -815,10 +815,6 @@ button.danger,
   display: none;
 }
 
-.item-focus-backdrop[hidden] {
-  display: none;
-}
-
 .modal-backdrop {
   position: fixed;
   inset: 0;
@@ -836,28 +832,6 @@ button.danger,
   border-radius: 8px;
   padding: 10px;
   box-shadow: none;
-}
-
-.item-focus-dialog {
-  width: min(900px, calc(100vw - 24px));
-  max-height: calc(100vh - 24px);
-  overflow: auto;
-}
-
-.item-focus-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.item-focus-header h2 {
-  margin: 0;
-}
-
-.item-focus-body .task-card {
-  margin: 0;
 }
 
 table {

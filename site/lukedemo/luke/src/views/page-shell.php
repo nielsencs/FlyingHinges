@@ -38,12 +38,6 @@
     <?php endforeach; ?>
   </div>
 </section>
-<div class="item-focus-backdrop modal-backdrop" hidden data-item-focus-modal>
-  <div class="modal item-focus-dialog" role="dialog" aria-modal="true" aria-labelledby="item-focus-title">
-    <div class="item-focus-header"><h2 id="item-focus-title">Item focus</h2><button type="button" class="small" data-close-item-focus-modal>Close</button></div>
-    <div class="item-focus-body" data-item-focus-body></div>
-  </div>
-</div>
 </main>
 <?= project_demo_agent_script_html() ?>
 </body>

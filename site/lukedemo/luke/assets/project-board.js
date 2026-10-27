@@ -35,9 +35,6 @@ function boardRememberSubmittingItem(form) {
   const card = form ? form.closest('.task-card[data-task-id]') : null;
   if (!card || !window.sessionStorage) return;
   try {
-    if (form.closest('[data-item-focus-modal]')) {
-      sessionStorage.setItem('projectBoardFocusItemId', card.dataset.taskId || '');
-    }
     sessionStorage.setItem('projectBoardReopenItemId', card.dataset.taskId || '');
   } catch (error) {}
 }
@@ -684,34 +681,12 @@ function boardSyncAddItemDisclosure() {
   });
 }
 function boardKeepSummaryControlsClickable(event) {
-  if (event.target.closest && event.target.closest('.task-summary-controls, .change-dot-form, [data-open-item-focus-modal]')) event.stopPropagation();
+  if (event.target.closest && event.target.closest('.task-summary-controls, .change-dot-form')) event.stopPropagation();
 }
-function boardItemFocusModal() {
-  return document.querySelector('[data-item-focus-modal]');
-}
-function boardReturnFocusedItem() {
-  const modal = boardItemFocusModal();
-  if (!modal) return;
-  const body = modal.querySelector('[data-item-focus-body]');
-  const card = body ? body.querySelector('.task-card[data-task-id]') : null;
-  if (!card) return;
-  const id = card.dataset.taskId || '';
-  const escapedId = (window.CSS && CSS.escape) ? CSS.escape(id) : id.replace(/[^a-zA-Z0-9_-]/g, '\\$&');
-  const placeholder = document.querySelector('[data-item-focus-placeholder="' + escapedId + '"]');
-  if (placeholder) placeholder.replaceWith(card);
-}
-function boardOpenFocusedItem(card) {
-  const modal = boardItemFocusModal();
-  const body = modal ? modal.querySelector('[data-item-focus-body]') : null;
-  if (!modal || !body || !card) return false;
-  boardReturnFocusedItem();
-  const placeholder = document.createElement('div');
-  placeholder.hidden = true;
-  placeholder.dataset.itemFocusPlaceholder = card.dataset.taskId || '';
-  card.before(placeholder);
-  body.appendChild(card);
+function boardOpenCardInPlace(card) {
+  if (!card) return false;
   card.open = true;
-  modal.hidden = false;
+  if (card.scrollIntoView) card.scrollIntoView({block: 'center'});
   const firstField = card.querySelector('input[name="title"], [data-formatted-notes-editor], textarea, button');
   if (firstField) firstField.focus();
   return true;
@@ -723,48 +698,7 @@ function boardOpenNewlyAddedItem() {
   url.searchParams.delete('open_item_id');
   if (window.history && history.replaceState) history.replaceState(null, '', url.pathname + url.search + url.hash);
   const escapedId = (window.CSS && CSS.escape) ? CSS.escape(id) : id.replace(/[^a-zA-Z0-9_-]/g, '\\$&');
-  boardOpenFocusedItem(document.querySelector('.task-card[data-task-id="' + escapedId + '"]'));
-}
-function boardOpenItemFocusModal(event) {
-  const button = event.target.closest && event.target.closest('[data-open-item-focus-modal]');
-  if (!button) return;
-  event.preventDefault();
-  event.stopPropagation();
-  const id = button.dataset.itemFocusId || '';
-  const escapedId = (window.CSS && CSS.escape) ? CSS.escape(id) : id.replace(/[^a-zA-Z0-9_-]/g, '\\$&');
-  const card = document.querySelector('.task-card[data-task-id="' + escapedId + '"]');
-  boardOpenFocusedItem(card);
-}
-function boardCloseItemFocusModal(event) {
-  const closeButton = event.target.closest && event.target.closest('[data-close-item-focus-modal]');
-  const backdropClick = event.target && event.target.matches && event.target.matches('[data-item-focus-modal]');
-  if (!closeButton && !backdropClick) return;
-  if (!boardConfirmDirtyNavigation(event)) return;
-  event.preventDefault();
-  boardReturnFocusedItem();
-  const modal = boardItemFocusModal();
-  if (modal) modal.hidden = true;
-}
-function boardCloseItemFocusModalOnEscape(event) {
-  if (event.key !== 'Escape') return;
-  const modal = document.querySelector('[data-item-focus-modal]:not([hidden])');
-  if (!modal) return;
-  if (!boardConfirmDirtyNavigation(event)) return;
-  event.preventDefault();
-  boardReturnFocusedItem();
-  modal.hidden = true;
-}
-function boardRestoreFocusedItem() {
-  if (!window.sessionStorage) return;
-  let focusId = '';
-  try {
-    focusId = sessionStorage.getItem('projectBoardFocusItemId') || '';
-    sessionStorage.removeItem('projectBoardFocusItemId');
-  } catch (error) {}
-  if (!focusId) return;
-  const escapedId = (window.CSS && CSS.escape) ? CSS.escape(focusId) : focusId.replace(/[^a-zA-Z0-9_-]/g, '\\$&');
-  const card = document.querySelector('.task-card[data-task-id="' + escapedId + '"]');
-  boardOpenFocusedItem(card);
+  boardOpenCardInPlace(document.querySelector('.task-card[data-task-id="' + escapedId + '"]'));
 }
 function boardCopyTextFallback(text) {
   const box = document.createElement('textarea');
@@ -969,13 +903,10 @@ document.addEventListener('submit', boardSavedOnSubmit, true);
 document.addEventListener('click', boardImproveTranscriptClicked, true);
 document.addEventListener('click', boardCopyImprovedTranscriptClicked, true);
 document.addEventListener('click', boardStatusPresetClicked, true);
-document.addEventListener('click', boardOpenItemFocusModal, true);
-document.addEventListener('click', boardCloseItemFocusModal, true);
 document.addEventListener('click', boardConfirmDirtyNavigation, true);
 document.addEventListener('click', boardKeepSummaryControlsClickable, true);
 document.addEventListener('click', boardToggleScopeMenu, true);
 document.addEventListener('keydown', boardCloseScopeMenuOnEscape, true);
-document.addEventListener('keydown', boardCloseItemFocusModalOnEscape, true);
 document.addEventListener('keydown', boardVoiceScopeCloseOnEscape, true);
 
 const boardPriorityOrder = {words: ['Must', 'Should', 'Could', "Won't"], numbers: ['Should', 'Could', "Won't", 'Must']};
@@ -1088,7 +1019,6 @@ document.addEventListener('DOMContentLoaded', boardOpenNewlyAddedItem);
 document.addEventListener('DOMContentLoaded', boardSyncAddItemDisclosure);
 document.addEventListener('DOMContentLoaded', boardRestoreOpenState);
 document.addEventListener('DOMContentLoaded', boardReopenSubmittedItem);
-document.addEventListener('DOMContentLoaded', boardRestoreFocusedItem);
 document.addEventListener('DOMContentLoaded', boardEnableDetailsMotion);
 document.addEventListener('DOMContentLoaded', function() { boardInitFormattedNotesEditors(); });
 document.addEventListener('DOMContentLoaded', boardFlushQueuedRecordings);
