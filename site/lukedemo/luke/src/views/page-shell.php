@@ -20,8 +20,8 @@
     <span class="luke-letter">L<span>ogical</span></span>&nbsp;<span class="luke-letter">U<span>nifying</span></span>&nbsp;<span class="luke-letter">K<span>nowledge</span></span>&nbsp;<span class="luke-letter">E<span>ngine</span></span>
   </h1>
   <div class="demo-controls"><a class="button small subtle" data-open-settings href="<?= h('?' . http_build_query(['view' => 'settings'] + $fullContextQuery)) ?>">Settings</a> <?= project_demo_toggle_html() ?></div>
-  <div class="muted">LUKE Areas, Focuses and Items.<br> Updated <?= h((string)($board['updated_at'] ?? '')) ?>.</div>
-  <div class="remote-update-notice muted" hidden>Update available; save or reload to avoid losing your edits.</div>
+  <div class="muted">LUKE Areas, Focuses and Items.</div>
+  <div class="remote-update-notice muted" hidden>Board changed elsewhere. Your unsaved edits are still here. Copy any unsaved text, then reload to see the update.</div>
 </header>
 <?php include __DIR__ . '/context-controls.php'; ?>
 <?php include __DIR__ . '/item-filters.php'; ?>
@@ -31,7 +31,7 @@
 <?php include __DIR__ . '/edit-modals.php'; ?>
 <section class="task-list-section">
   <form id="empty-bin" method="post" onsubmit="return confirm('Permanently delete everything in the Bin? This cannot be undone.')"><input type="hidden" name="action" value="empty_bin"><?= $returnContextInputs ?></form>
-  <form id="undo-last-change" method="post" onsubmit="return confirm('Undo the last saved LUKE change?')"><input type="hidden" name="action" value="undo_last_change"><input type="hidden" name="section" value="<?= h($sectionFilter) ?>"><input type="hidden" name="project" value="<?= h($projectFilter) ?>"><?= $returnContextInputs ?></form>
+  <form id="undo-last-change" method="post" onsubmit="return confirm('Undo the last saved change to the whole board?')"><input type="hidden" name="action" value="undo_last_change"><input type="hidden" name="section" value="<?= h($sectionFilter) ?>"><input type="hidden" name="project" value="<?= h($projectFilter) ?>"><?= $returnContextInputs ?></form>
   <div class="task-list">
     <?php foreach ($visibleTodos as $todo): ?>
       <?php include __DIR__ . '/item-card.php'; ?>

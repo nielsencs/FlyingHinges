@@ -1041,3 +1041,5 @@ summary {
 
 .backup-history { max-height: 80vh; overflow-y: auto; }
 .backup-history .history-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 6px 0; border-bottom: 1px solid rgba(128,128,128,.25); }
+
+.summary-save-hint { margin: 0 0 6px; font-size: 0.85em; }

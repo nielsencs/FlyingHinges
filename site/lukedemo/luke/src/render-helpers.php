@@ -578,7 +578,7 @@ function project_summary_meta_controls(array $todo, string $displayStatus, array
 
     $html .= '<form method="post" class="summary-control-form summary-order-form">'
         . project_item_update_hidden_inputs($todo, [], $contextQuery)
-        . '<select name="order" class="summary-order-control" title="Change order" aria-label="Change order" onchange="this.form.submit()">' . project_order_options($order) . '</select></form>';
+        . '<select name="order" class="summary-order-control" title="Change order" aria-label="Change order" onchange="boardSummaryMetaChanged(this)">' . project_order_options($order) . '</select></form>';
 
     if ($isBinned) {
         $html .= '<span class="badge ' . h($displayStatus) . ' summary-control summary-status-control disabled-summary-control">' . h($displayStatus) . '</span>';

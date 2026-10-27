@@ -36,7 +36,7 @@ function project_now(): string {
 }
 
 function project_note_stamp_datetime(): string {
-    return date('Y-m-d H:i');
+    return (new DateTime('now', new DateTimeZone('Europe/London')))->format('Y-m-d H:i');
 }
 
 function project_note_stamp_user(): string {
