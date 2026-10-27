@@ -250,3 +250,67 @@ function project_attachment_response(string $file): void {
     header('X-Content-Type-Options: nosniff');
     readfile($path);
 }
+
+function project_note_image_dir(): string {
+    $dir = dirname(project_data_path()) . '/note-images';
+    if (!is_dir($dir)) {
+        mkdir($dir, 0770, true);
+    }
+    return $dir;
+}
+
+function project_note_image_name_valid(string $file): bool {
+    return (bool)preg_match('/^[a-f0-9]{40}\.(?:png|jpg|gif|webp)$/', $file);
+}
+
+function project_note_image_response(string $file): void {
+    $path = project_note_image_dir() . '/' . basename($file);
+    if (!project_note_image_name_valid($file) || !is_file($path)) {
+        http_response_code(404);
+        echo 'Image not found';
+        return;
+    }
+    $types = ['png' => 'image/png', 'jpg' => 'image/jpeg', 'gif' => 'image/gif', 'webp' => 'image/webp'];
+    header('Content-Type: ' . $types[pathinfo($file, PATHINFO_EXTENSION)]);
+    header('Content-Length: ' . (string)filesize($path));
+    header('Cache-Control: private, max-age=31536000, immutable');
+    header('X-Content-Type-Options: nosniff');
+    readfile($path);
+}
+
+/** Move pasted data-URL images out of a note into files; the note keeps a short link. */
+function project_note_images_externalise(string $notes): string {
+    if (!str_contains($notes, 'data:image/')) {
+        return $notes;
+    }
+    return preg_replace_callback('/<img\b[^>]*>/i', function (array $m): string {
+        $tag = $m[0];
+        if (!preg_match('/\bsrc\s*=\s*(["\'])(.*?)\1/is', $tag, $srcMatch)) {
+            return $tag;
+        }
+        $src = html_entity_decode($srcMatch[2], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        if (!preg_match('~^data:image/(png|jpe?g|gif|webp);base64,([a-z0-9+/=]+)$~i', $src, $img)) {
+            return $tag;
+        }
+        $bytes = base64_decode($img[2], true);
+        if ($bytes === false || $bytes === '') {
+            return $tag;
+        }
+        $ext = strtolower($img[1]) === 'jpeg' ? 'jpg' : strtolower($img[1]);
+        $name = sha1($bytes) . '.' . $ext;
+        $path = project_note_image_dir() . '/' . $name;
+        if (!is_file($path)) {
+            $tmp = $path . '.tmp.' . getmypid();
+            if (file_put_contents($tmp, $bytes) === false) {
+                return $tag;
+            }
+            @chmod($tmp, 0660);
+            rename($tmp, $path);
+        }
+        $alt = 'Pasted image';
+        if (preg_match('/\balt\s*=\s*(["\'])(.*?)\1/is', $tag, $altMatch) && trim($altMatch[2]) !== '') {
+            $alt = trim(html_entity_decode($altMatch[2], ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+        }
+        return '<img src="?noteimage=' . $name . '" alt="' . htmlspecialchars($alt, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '" loading="lazy" class="note-image">';
+    }, $notes) ?? $notes;
+}

@@ -7,13 +7,17 @@ if (isset($_GET['demo']) && !project_demo_forced()) {
     exit;
 }
 project_demo_start();
-if (project_demo_mode() && (isset($_GET['audio']) || isset($_GET['attachment']))) {
+if (project_demo_mode() && (isset($_GET['audio']) || isset($_GET['attachment']) || isset($_GET['noteimage']))) {
     http_response_code(404);
     echo 'Not available in demo';
     exit;
 }
 if (isset($_GET['audio'])) {
     project_audio_response((string)$_GET['audio']);
+    exit;
+}
+if (isset($_GET['noteimage'])) {
+    project_note_image_response((string)$_GET['noteimage']);
     exit;
 }
 if (isset($_GET['attachment'])) {

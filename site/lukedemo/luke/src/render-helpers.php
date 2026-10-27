@@ -20,7 +20,8 @@ function project_note_image_from_tag(string $tag): string {
         return '';
     }
     $src = html_entity_decode($srcMatch[2], ENT_QUOTES | ENT_HTML5, 'UTF-8');
-    if (!preg_match('~^data:image/(?:png|jpe?g|gif|webp);base64,[a-z0-9+/=]+$~i', $src)) {
+    if (!preg_match('~^data:image/(?:png|jpe?g|gif|webp);base64,[a-z0-9+/=]+$~i', $src)
+        && !preg_match('~^\?noteimage=[a-f0-9]{40}\.(?:png|jpg|gif|webp)$~', $src)) {
         return '';
     }
     $alt = 'Pasted image';

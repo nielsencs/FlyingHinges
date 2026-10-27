@@ -734,7 +734,8 @@ function boardEscapeNoteText(text) {
   return text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
 }
 function boardIsSafeNoteImageSrc(src) {
-  return /^data:image\/(png|jpe?g|gif|webp);base64,[a-z0-9+/=]+$/i.test((src || '').trim());
+  const value = (src || '').trim();
+  return /^data:image\/(png|jpe?g|gif|webp);base64,[a-z0-9+/=]+$/i.test(value) || /^\?noteimage=[a-f0-9]{40}\.(png|jpg|gif|webp)$/.test(value);
 }
 function boardSafeNoteImageHtml(image) {
   const src = (image.getAttribute('src') || '').trim();

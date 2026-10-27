@@ -285,6 +285,13 @@ function project_save_board(array $board): void {
     $previousItems = is_array($previous) ? ($previous['items'] ?? $previous['todos'] ?? []) : [];
     project_create_backup('', project_change_summary($previousItems, $board['items'] ?? []));
     $board = project_purge_expired_binned_items($board);
+    foreach (['items', 'todos'] as $listKey) {
+        foreach ($board[$listKey] ?? [] as $i => $item) {
+            if (is_array($item) && is_string($item['notes'] ?? null)) {
+                $board[$listKey][$i]['notes'] = project_note_images_externalise($item['notes']);
+            }
+        }
+    }
     $board['updated_at'] = project_now();
     $tmp = $path . '.tmp.' . getmypid();
     file_put_contents($tmp, json_encode(project_normalise_board($board), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n", LOCK_EX);
