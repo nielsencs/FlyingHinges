@@ -133,5 +133,13 @@ function project_redirect_after_action(array $board, array $post): string {
         foreach ($board['items'] ?? [] as $todo) { $maxId = max($maxId, (int)($todo['id'] ?? 0)); }
         if ($maxId > (int)project_field($post, 'id')) { $query['just_edited_item_id'] = (string)$maxId; }
     }
+    if (in_array($action, ['add_item', 'add_todo'], true)) {
+        $maxId = 0;
+        foreach ($board['items'] ?? [] as $todo) { $maxId = max($maxId, (int)($todo['id'] ?? 0)); }
+        if ($maxId > 0) {
+            $query['just_edited_item_id'] = (string)$maxId;
+            $query['open_item_id'] = (string)$maxId;
+        }
+    }
     return './?' . http_build_query($query);
 }

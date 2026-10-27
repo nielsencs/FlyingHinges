@@ -716,6 +716,15 @@ function boardOpenFocusedItem(card) {
   if (firstField) firstField.focus();
   return true;
 }
+function boardOpenNewlyAddedItem() {
+  const url = new URL(window.location.href);
+  const id = url.searchParams.get('open_item_id') || '';
+  if (!id) return;
+  url.searchParams.delete('open_item_id');
+  if (window.history && history.replaceState) history.replaceState(null, '', url.pathname + url.search + url.hash);
+  const escapedId = (window.CSS && CSS.escape) ? CSS.escape(id) : id.replace(/[^a-zA-Z0-9_-]/g, '\\$&');
+  boardOpenFocusedItem(document.querySelector('.task-card[data-task-id="' + escapedId + '"]'));
+}
 function boardOpenItemFocusModal(event) {
   const button = event.target.closest && event.target.closest('[data-open-item-focus-modal]');
   if (!button) return;
@@ -1148,6 +1157,7 @@ document.addEventListener('keydown', boardAbortRecordingOnEscape, true);
 document.addEventListener('DOMContentLoaded', boardInitRecorder);
 document.addEventListener('DOMContentLoaded', boardInitVoiceScopeModals);
 document.addEventListener('DOMContentLoaded', boardInitAddItemModal);
+document.addEventListener('DOMContentLoaded', boardOpenNewlyAddedItem);
 document.addEventListener('DOMContentLoaded', boardSyncAddItemDisclosure);
 document.addEventListener('DOMContentLoaded', boardRestoreOpenState);
 document.addEventListener('DOMContentLoaded', boardReopenSubmittedItem);
