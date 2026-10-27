@@ -415,6 +415,9 @@ function project_hard_delete_item(array $board, array $input): array {
         if (is_array($audio) && trim((string)($audio['file'] ?? '')) !== '') {
             $audioFiles[] = (string)$audio['file'];
         }
+        foreach (is_array($todo['audio_more'] ?? null) ? $todo['audio_more'] : [] as $clip) {
+            if (is_array($clip) && trim((string)($clip['file'] ?? '')) !== '') { $audioFiles[] = (string)$clip['file']; }
+        }
         return false;
     }));
     foreach ($audioFiles as $file) {
@@ -435,6 +438,9 @@ function project_empty_bin(array $board, array $input): array {
         $audio = $todo['audio'] ?? null;
         if (is_array($audio) && trim((string)($audio['file'] ?? '')) !== '') {
             $audioFiles[] = (string)$audio['file'];
+        }
+        foreach (is_array($todo['audio_more'] ?? null) ? $todo['audio_more'] : [] as $clip) {
+            if (is_array($clip) && trim((string)($clip['file'] ?? '')) !== '') { $audioFiles[] = (string)$clip['file']; }
         }
         return false;
     }));
@@ -488,6 +494,9 @@ function project_purge_expired_binned_items(array $board, int $retentionDays = 3
         $audio = $todo['audio'] ?? null;
         if (is_array($audio) && trim((string)($audio['file'] ?? '')) !== '') {
             $audioFiles[] = (string)$audio['file'];
+        }
+        foreach (is_array($todo['audio_more'] ?? null) ? $todo['audio_more'] : [] as $clip) {
+            if (is_array($clip) && trim((string)($clip['file'] ?? '')) !== '') { $audioFiles[] = (string)$clip['file']; }
         }
         return false;
     }));
@@ -614,6 +623,31 @@ function project_record_audio_item(array $board, array $input): array {
     @chmod($dest, 0660);
     $transcript = project_transcribe_audio($dest);
     $now = project_now();
+    $targetId = (int)($input['item_id'] ?? 0);
+    if ($targetId > 0) {
+        // Voice note on an existing item: attach the audio and append the transcript to its Notes.
+        foreach ($board['items'] as &$existing) {
+            if ((int)($existing['id'] ?? 0) !== $targetId || project_item_is_binned($existing)) {
+                continue;
+            }
+            $clip = ['file' => project_audio_public_name($name), 'mime' => $mime, 'transcript' => $transcript, 'recorded_at' => $now];
+            if (is_array($existing['audio'] ?? null) && trim((string)($existing['audio']['file'] ?? '')) !== '') {
+                $existing['audio_more'] = array_values(array_merge(is_array($existing['audio_more'] ?? null) ? $existing['audio_more'] : [], [$clip]));
+            } else {
+                $existing['audio'] = $clip;
+            }
+            $entry = project_note_stamp_line() . "\n" . ($transcript !== 'Transcript unavailable' ? $transcript : 'Voice note recorded (transcript unavailable)');
+            $oldNotes = rtrim((string)($existing['notes'] ?? ''));
+            $existing['notes'] = $oldNotes === '' ? $entry : $oldNotes . "\n\n" . $entry;
+            $existing['changed_at'] = $now;
+            $existing['updated_at'] = $now;
+            unset($existing);
+            return project_normalise_board($board);
+        }
+        unset($existing);
+        @unlink($dest);
+        return $board;
+    }
     $titleText = $transcript !== 'Transcript unavailable' ? mb_substr($transcript, 0, 80) : 'Voice note';
     foreach ($board['items'] as &$todo) {
         if (($todo['section'] ?? '') === 'the-umbrella' && ($todo['project'] ?? '') === 'communication' && is_array($todo['audio'] ?? null)) {

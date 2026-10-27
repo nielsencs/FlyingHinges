@@ -239,6 +239,11 @@ function project_render_audio_attachment(array $todo): string {
     }
     $id = h((string)($todo['id'] ?? ''));
     $html = '<div class="audio-attachment"><audio controls preload="metadata" src="?audio=' . h(rawurlencode($file)) . '"></audio><div class="audio-transcript"><div class="audio-transcript-heading"><strong>Transcript</strong><button type="button" class="small copy-transcript-button" data-copy-transcript-button data-copy-transcript-text="' . h($transcript) . '">Copy</button></div><p>' . h($transcript) . '</p></div>';
+    foreach (is_array($todo['audio_more'] ?? null) ? $todo['audio_more'] : [] as $clip) {
+        if (is_array($clip) && trim((string)($clip['file'] ?? '')) !== '') {
+            $html .= '<div class="audio-attachment audio-attachment-more"><audio controls preload="metadata" src="?audio=' . h(rawurlencode((string)$clip['file'])) . '"></audio></div>';
+        }
+    }
     $improved = trim((string)($audio['improved_transcript'] ?? ''));
     if ($improved !== '') {
         $meta = trim((string)($audio['improved_transcript_engine'] ?? ''));

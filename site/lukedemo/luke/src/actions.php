@@ -128,6 +128,17 @@ function project_redirect_after_action(array $board, array $post): string {
             break;
         }
     }
+    if ($hasReturnContext && $action === 'record_audio') {
+        // Recording never changes the view: the new/updated item is carried as the hidden just-edited item.
+        $targetId = (int)project_field($post, 'item_id');
+        $newId = 0;
+        foreach ($board['items'] ?? [] as $todo) { $newId = max($newId, (int)($todo['id'] ?? 0)); }
+        $focusId = $targetId > 0 ? $targetId : $newId;
+        if ($focusId > 0) {
+            $query['just_edited_item_id'] = (string)$focusId;
+            $query['open_item_id'] = (string)$focusId;
+        }
+    }
     if ($hasReturnContext && $action === 'duplicate_item' && project_field($post, 'id') !== '') {
         $maxId = 0;
         foreach ($board['items'] ?? [] as $todo) { $maxId = max($maxId, (int)($todo['id'] ?? 0)); }

@@ -1,4 +1,6 @@
 window.boardConfig = window.boardConfig || {};
+let boardActiveRecordButton = null;
+let boardLastRecordingUrl = '';
 const boardConfig = window.boardConfig;
 function boardContextUrl(form, view) {
   const section = form.elements.section_filter ? form.elements.section_filter.value : '';
@@ -394,12 +396,14 @@ function boardFormForQueuedRecording(item) {
   form.append('audio', item.blob, item.filename || 'voice-note.webm');
   return form;
 }
-function boardGoToRecordedVoiceNoteContext() {
-  window.location = './?section_filter=the-umbrella&project_filter=communication&task_status=';
+function boardGoToRecordedVoiceNoteContext(url) {
+  // The server answers with a redirect back to the same Area/Focus/filters, with the new or updated item carried as the hidden just-edited item.
+  window.location = url || window.location.href;
 }
 function boardUploadQueuedRecording(item) {
   return fetch('./', {method: 'POST', body: boardFormForQueuedRecording(item), credentials: 'same-origin'}).then(function(response) {
     if (!response.ok) throw new Error('Queued recording upload failed');
+    boardLastRecordingUrl = response.url;
     return boardDeleteQueuedRecording(item.id);
   });
 }
@@ -413,7 +417,7 @@ function boardFlushQueuedRecordings() {
     }, Promise.resolve());
   }).then(function() {
     boardQueuedRecordingsFlushing = false;
-    if (uploadedQueuedRecording) boardGoToRecordedVoiceNoteContext();
+    if (uploadedQueuedRecording) boardGoToRecordedVoiceNoteContext(boardLastRecordingUrl);
   }).catch(function() {
     boardQueuedRecordingsFlushing = false;
   });
@@ -434,6 +438,7 @@ async function boardStartRecording(button) {
     return;
   }
   if (boardRecording) return;
+  boardActiveRecordButton = button;
   const stream = await navigator.mediaDevices.getUserMedia({audio: true});
   boardRecordChunks = [];
   boardAbortRecording = false;
@@ -482,11 +487,12 @@ function boardUploadRecording(button) {
   form.append('task_priority', boardConfig.taskPriority);
   form.append('task_status', boardConfig.taskStatus);
   form.append('task_sort', boardConfig.taskSort);
+  if (button.dataset.itemId) form.append('item_id', button.dataset.itemId);
   form.append('audio', blob, 'voice-note.webm');
   fetch('./', {method: 'POST', body: form, credentials: 'same-origin'}).then(function(response) {
     if (response.status === 413) { const tooBig = new Error('Upload rejected'); tooBig.rejected = true; throw tooBig; }
     if (!response.ok) throw new Error('Upload failed');
-    boardGoToRecordedVoiceNoteContext();
+    boardGoToRecordedVoiceNoteContext(response.url);
   }).catch(function(error) {
     boardQueueRecordingForLater(blob, form).then(function() {
       window.alert(error && error.rejected
@@ -627,17 +633,19 @@ function boardInitRecorder() {
   const button = document.querySelector('.record-button');
   if (!button) return;
   const abortButton = boardRecordAbortButton();
-  button.addEventListener('click', boardRecordClicked);
-  button.addEventListener('pointerdown', boardRecordPointerDown);
-  button.addEventListener('pointerup', boardRecordPointerUp);
-  button.addEventListener('pointercancel', boardRecordPointerUp);
+  document.querySelectorAll('.record-button, .item-record-button').forEach(function(b) {
+    b.addEventListener('click', boardRecordClicked);
+    b.addEventListener('pointerdown', boardRecordPointerDown);
+    b.addEventListener('pointerup', boardRecordPointerUp);
+    b.addEventListener('pointercancel', boardRecordPointerUp);
+  });
   if (abortButton) {
-    abortButton.addEventListener('click', function() { boardCancelRecording(button); });
+    abortButton.addEventListener('click', function() { boardCancelRecording(boardActiveRecordButton || button); });
   }
 }
 function boardAbortRecordingOnEscape(event) {
   if (event.key !== 'Escape' || !boardRecording) return;
-  const button = document.querySelector('.record-button');
+  const button = boardActiveRecordButton || document.querySelector('.record-button');
   if (!button) return;
   event.preventDefault();
   boardCancelRecording(button);
