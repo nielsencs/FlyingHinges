@@ -295,9 +295,10 @@ body.details-motion-ready .add-item-disclosure > summary::before {
   grid-row: 1;
 }
 
-.record-controls .add-item-button {
+.record-controls .add-item-quick {
   grid-column: 2;
   grid-row: 2;
+  margin: 0;
 }
 
 .record-button {
@@ -837,12 +838,6 @@ button.danger,
   box-shadow: none;
 }
 
-.add-task-form {
-  width: min(900px, calc(100vw - 24px));
-  max-height: calc(100vh - 24px);
-  overflow: auto;
-}
-
 .item-focus-dialog {
   width: min(900px, calc(100vw - 24px));
   max-height: calc(100vh - 24px);
@@ -895,11 +890,6 @@ tr:last-child td {
 .center-actions {
   justify-content: center;
   align-items: center;
-}
-
-.add-item-actions .equal-action {
-  width: 104px;
-  text-align: center;
 }
 
 .task-actions {

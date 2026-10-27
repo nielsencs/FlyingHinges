@@ -766,75 +766,6 @@ function boardRestoreFocusedItem() {
   const card = document.querySelector('.task-card[data-task-id="' + escapedId + '"]');
   boardOpenFocusedItem(card);
 }
-function boardOpenAddItemModal(event) {
-  const button = event.target.closest && event.target.closest('[data-open-add-item-modal]');
-  if (!button) return;
-  const modal = document.querySelector('[data-add-item-modal]');
-  if (!modal) return;
-  event.preventDefault();
-  modal.hidden = false;
-  const title = modal.querySelector('input[name="title"]');
-  if (title) title.focus();
-}
-function boardCloseAddItemModal(event) {
-  const closeButton = event.target.closest && event.target.closest('[data-close-add-item-modal]');
-  const backdropClick = event.target && event.target.matches && event.target.matches('[data-add-item-modal]');
-  if (!closeButton && !backdropClick) return;
-  if (!boardConfirmDirtyNavigation(event)) return;
-  event.preventDefault();
-  const modal = document.querySelector('[data-add-item-modal]');
-  if (modal) modal.hidden = true;
-}
-function boardCloseAddItemModalOnEscape(event) {
-  if (event.key !== 'Escape') return;
-  const modal = document.querySelector('[data-add-item-modal]:not([hidden])');
-  if (!modal) return;
-  if (!boardConfirmDirtyNavigation(event)) return;
-  event.preventDefault();
-  modal.hidden = true;
-}
-function boardAddItemUpdateNewProjectLink(root, section) {
-  const link = root ? root.querySelector('[data-add-item-new-project]') : null;
-  if (!link) return;
-  const url = new URL(link.getAttribute('href'), window.location.href);
-  if (section) url.searchParams.set('section_filter', section);
-  else url.searchParams.delete('section_filter');
-  link.setAttribute('href', url.pathname + url.search + url.hash);
-}
-function boardAddItemSectionChanged(select) {
-  const root = select.closest('[data-add-item-modal]') || select.form;
-  const projectSelect = root ? (root.querySelector('[data-add-item-project]') || (root.elements ? root.elements.project : null)) : null;
-  if (!projectSelect) return;
-  boardVoiceScopeApplyProjectFilter(projectSelect, select.value);
-  const selectedProject = projectSelect.selectedOptions[0];
-  if (!selectedProject || selectedProject.value === '' || selectedProject.disabled || selectedProject.dataset.section !== select.value) {
-    projectSelect.value = boardVoiceScopeFirstProjectForSection(projectSelect, select.value);
-  }
-  boardAddItemUpdateNewProjectLink(root, select.value);
-}
-function boardAddItemProjectChanged(select) {
-  const root = select.closest('[data-add-item-modal]') || select.form;
-  const option = select.selectedOptions[0];
-  const sectionSelect = root ? (root.querySelector('[data-add-item-section]') || (root.elements ? root.elements.section : null)) : null;
-  if (!sectionSelect || !option || option.value === '') return;
-  if (option.dataset.section) {
-    sectionSelect.value = option.dataset.section;
-    boardVoiceScopeApplyProjectFilter(select, option.dataset.section);
-    boardAddItemUpdateNewProjectLink(root, option.dataset.section);
-  }
-}
-function boardInitAddItemModal() {
-  const modal = document.querySelector('[data-add-item-modal]');
-  if (!modal) return;
-  const section = modal.querySelector('[data-add-item-section]');
-  const project = modal.querySelector('[data-add-item-project]');
-  if (!section || !project) return;
-  boardVoiceScopeApplyProjectFilter(project, section.value);
-  const selectedProject = project.selectedOptions[0];
-  if (selectedProject && selectedProject.value !== '' && selectedProject.dataset.section !== section.value) {
-    project.value = boardVoiceScopeFirstProjectForSection(project, section.value);
-  }
-}
 function boardCopyTextFallback(text) {
   const box = document.createElement('textarea');
   box.value = text;
@@ -1038,15 +969,12 @@ document.addEventListener('submit', boardSavedOnSubmit, true);
 document.addEventListener('click', boardImproveTranscriptClicked, true);
 document.addEventListener('click', boardCopyImprovedTranscriptClicked, true);
 document.addEventListener('click', boardStatusPresetClicked, true);
-document.addEventListener('click', boardOpenAddItemModal, true);
-document.addEventListener('click', boardCloseAddItemModal, true);
 document.addEventListener('click', boardOpenItemFocusModal, true);
 document.addEventListener('click', boardCloseItemFocusModal, true);
 document.addEventListener('click', boardConfirmDirtyNavigation, true);
 document.addEventListener('click', boardKeepSummaryControlsClickable, true);
 document.addEventListener('click', boardToggleScopeMenu, true);
 document.addEventListener('keydown', boardCloseScopeMenuOnEscape, true);
-document.addEventListener('keydown', boardCloseAddItemModalOnEscape, true);
 document.addEventListener('keydown', boardCloseItemFocusModalOnEscape, true);
 document.addEventListener('keydown', boardVoiceScopeCloseOnEscape, true);
 
@@ -1156,7 +1084,6 @@ document.addEventListener('submit', boardSettingsSubmit, true);
 document.addEventListener('keydown', boardAbortRecordingOnEscape, true);
 document.addEventListener('DOMContentLoaded', boardInitRecorder);
 document.addEventListener('DOMContentLoaded', boardInitVoiceScopeModals);
-document.addEventListener('DOMContentLoaded', boardInitAddItemModal);
 document.addEventListener('DOMContentLoaded', boardOpenNewlyAddedItem);
 document.addEventListener('DOMContentLoaded', boardSyncAddItemDisclosure);
 document.addEventListener('DOMContentLoaded', boardRestoreOpenState);
