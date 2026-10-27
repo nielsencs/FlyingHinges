@@ -181,8 +181,26 @@ function boardDropdownChanged(select) {
   if (!boardConfirmDirtyNavigation()) return;
   select.form.submit();
 }
+const BOARD_RECENT_COUNT_KEY = 'projectBoardRecentCount';
+function boardRecentCountStore(count) {
+  try { window.localStorage.setItem(BOARD_RECENT_COUNT_KEY, String(count)); } catch (e) {}
+}
+function boardRecentCountRestore() {
+  const select = document.querySelector('[data-recent-count-control]');
+  if (!select) return;
+  let saved = '';
+  try { saved = window.localStorage.getItem(BOARD_RECENT_COUNT_KEY) || ''; } catch (e) {}
+  if (saved === '' || saved === select.value) return;
+  const hasOption = Array.from(select.options).some(function(option) { return option.value === saved; });
+  if (!hasOption) return;
+  select.value = saved;
+  boardRecentCountChanged(select);
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boardRecentCountRestore);
+else boardRecentCountRestore();
 function boardRecentCountChanged(select) {
   const count = parseInt(select && select.value ? select.value : '3', 10) || 3;
+  boardRecentCountStore(count);
   document.querySelectorAll('.task-card[data-recent-rank]').forEach(function(card) {
     const rank = parseInt(card.dataset.recentRank || '0', 10) || 0;
     const visible = rank > 0 && rank <= count;
