@@ -115,10 +115,7 @@ function project_add_project(array $board, array $input): array {
         'slug' => $slug,
         'section' => project_field($input, 'section', project_first_section_slug($board)),
         'name' => $name,
-        'status' => project_field($input, 'status', 'Active'),
-        'now' => project_field($input, 'now'),
-        'next' => project_field($input, 'next'),
-        'blocked' => project_field($input, 'blocked'),
+        'summary' => project_field($input, 'summary'),
         'updated_at' => project_now(),
     ];
     return project_normalise_board($board);
@@ -132,7 +129,7 @@ function project_update_project(array $board, array $input): array {
             if (strcasecmp($incomingName, 'General') === 0) {
                 continue;
             }
-            foreach (['section', 'name', 'status', 'now', 'next', 'blocked'] as $key) {
+            foreach (['section', 'name', 'summary'] as $key) {
                 $project[$key] = project_field($input, $key, (string)($project[$key] ?? ''));
             }
             $project['updated_at'] = project_now();

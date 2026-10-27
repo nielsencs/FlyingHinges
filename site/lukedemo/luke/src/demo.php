@@ -146,12 +146,12 @@ function project_demo_seed_board(): array {
             ['slug' => 'workshop', 'name' => 'Workshop', 'summary' => 'Ideas, notes, recordings, and general capture.', 'updated_at' => $now],
         ],
         'projects' => [
-            ['slug' => 'events', 'section' => 'community', 'name' => 'Events', 'status' => 'Active', 'now' => 'Representative focus showing Areas, Focuses, Items, Priority, Status and Bin.', 'next' => 'Add, edit, move and bin items to see how LUKE works.', 'blocked' => 'Nothing blocked', 'updated_at' => $now],
-            ['slug' => 'planning', 'section' => 'community', 'name' => 'Planning', 'status' => 'Active', 'now' => 'Decisions and next steps for upcoming gatherings.', 'next' => 'Keep notes short and actionable.', 'blocked' => '', 'updated_at' => $now],
-            ['slug' => 'reference', 'section' => 'community', 'name' => 'Reference', 'status' => 'Watching', 'now' => 'Background material for decisions.', 'next' => 'Use only when it helps the next action.', 'blocked' => '', 'updated_at' => $now],
-            ['slug' => 'review', 'section' => 'community', 'name' => 'Review', 'status' => 'Active', 'now' => 'Items waiting for a careful check.', 'next' => 'Move checked work to Ready.', 'blocked' => '', 'updated_at' => $now],
-            ['slug' => 'paperwork', 'section' => 'household', 'name' => 'Paperwork', 'status' => 'Active', 'now' => 'Invoices, receipts, and admin.', 'next' => 'Keep records tidy.', 'blocked' => '', 'updated_at' => $now],
-            ['slug' => 'messages', 'section' => 'workshop', 'name' => 'Messages', 'status' => 'Active', 'now' => 'Voice notes and shared communications.', 'next' => 'Turn useful notes into clear items.', 'blocked' => '', 'updated_at' => $now],
+            ['slug' => 'events', 'section' => 'community', 'name' => 'Events', 'summary' => 'Representative focus showing Areas, Focuses, Items, Priority, Status and Bin. Add, edit, move and bin items to see how LUKE works.', 'updated_at' => $now],
+            ['slug' => 'planning', 'section' => 'community', 'name' => 'Planning', 'summary' => 'Decisions and next steps for upcoming gatherings. Keep notes short and actionable.', 'updated_at' => $now],
+            ['slug' => 'reference', 'section' => 'community', 'name' => 'Reference', 'summary' => 'Background material for decisions. Use only when it helps the next action.', 'updated_at' => $now],
+            ['slug' => 'review', 'section' => 'community', 'name' => 'Review', 'summary' => 'Items waiting for a careful check. Move checked work to Ready.', 'updated_at' => $now],
+            ['slug' => 'paperwork', 'section' => 'household', 'name' => 'Paperwork', 'summary' => 'Invoices, receipts, and admin. Keep records tidy.', 'updated_at' => $now],
+            ['slug' => 'messages', 'section' => 'workshop', 'name' => 'Messages', 'summary' => 'Voice notes and shared communications. Turn useful notes into clear items.', 'updated_at' => $now],
         ],
         'items' => $items,
     ];
@@ -162,7 +162,7 @@ function project_demo_blank_board(): array {
     return [
         'updated_at' => $now,
         'sections' => [['slug' => 'my-area', 'name' => 'My area', 'summary' => 'Your own area. Rename it or add more.', 'updated_at' => $now]],
-        'projects' => [['slug' => 'my-focus', 'section' => 'my-area', 'name' => 'My focus', 'status' => 'Active', 'now' => '', 'next' => '', 'blocked' => '', 'updated_at' => $now]],
+        'projects' => [['slug' => 'my-focus', 'section' => 'my-area', 'name' => 'My focus', 'summary' => '', 'updated_at' => $now]],
         'items' => [],
     ];
 }
@@ -194,7 +194,7 @@ function project_demo_random_board(): array {
         shuffle($focuses);
         foreach (array_slice($focuses, 0, random_int(2, 3)) as $focus) {
             $focusSlug = $sectionSlug . '-' . project_slug($focus);
-            $projects[] = ['slug' => $focusSlug, 'section' => $sectionSlug, 'name' => $focus, 'status' => 'Active', 'now' => '', 'next' => '', 'blocked' => '', 'updated_at' => $now];
+            $projects[] = ['slug' => $focusSlug, 'section' => $sectionSlug, 'name' => $focus, 'summary' => '', 'updated_at' => $now];
             for ($i = random_int(1, 3); $i > 0; $i--) {
                 $id = count($items) + 1;
                 $item = [

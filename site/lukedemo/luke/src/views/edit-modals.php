@@ -55,10 +55,7 @@
     <input type="hidden" name="section" value="<?= h($sectionFilter) ?>">
     <h2><?= $editingProject ? 'Edit focus' : 'Add focus' ?></h2>
     <label>Name</label><input name="name" value="<?= h($editingProject ? (string)$selectedProject['name'] : '') ?>" placeholder="Focus name" autofocus>
-    <label>Status</label><select name="status"><?= project_status_options(PROJECT_STATUSES, $editingProject ? (string)($selectedProject['status'] ?? 'Active') : 'Active') ?></select>
-    <label>Now</label><textarea name="now"><?= h($editingProject ? (string)($selectedProject['now'] ?? '') : '') ?></textarea>
-    <label>Next</label><textarea name="next"><?= h($editingProject ? (string)($selectedProject['next'] ?? '') : '') ?></textarea>
-    <label>Blocked</label><textarea name="blocked"><?= h($editingProject ? (string)($selectedProject['blocked'] ?? '') : '') ?></textarea>
+    <label>Description</label><textarea name="summary"><?= h($editingProject ? (string)($selectedProject['summary'] ?? '') : '') ?></textarea>
     <div class="actions center-actions"><button class="small">Save</button><a class="button small danger" href="<?= h($cancelUrl) ?>">Cancel</a></div>
   </form>
   <?php if ($editingProject): ?>

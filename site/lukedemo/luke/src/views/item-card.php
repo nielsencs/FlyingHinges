@@ -15,7 +15,6 @@
           <input type="hidden" name="base_priority" value="<?= h((string)($todo['priority'] ?? '')) ?>">
           <input type="hidden" name="base_order" value="<?= h((string)((int)($todo['order'] ?? 1))) ?>">
           <input type="hidden" name="base_title" value="<?= h((string)($todo['title'] ?? '')) ?>">
-          <p class="muted summary-save-hint" data-summary-save-hint>While this card is open, Priority, Order and Status changes wait for Save. On a closed card they save at once.</p>
           <?php $taskActionButtons = ''; ob_start(); ?><?php if ($todoIsBinned): ?><button class="small" form="restore-task-<?= h((string)$todo['id']) ?>">Restore</button><button class="small danger" form="hard-delete-task-<?= h((string)$todo['id']) ?>">Hard delete</button><?php else: ?><button class="small">Save</button><button class="small danger" form="delete-task-<?= h((string)$todo['id']) ?>">Bin</button><button class="small" form="duplicate-task-<?= h((string)$todo['id']) ?>" title="New Open item with the same title, area, focus and priority, but no notes">Duplicate</button><?php endif; ?><?php $taskActionButtons = ob_get_clean(); ?>
           <?= project_render_item_title_notes_fields((string)($todo['title'] ?? ''), project_render_formatted_notes_editor((string)($todo['notes'] ?? '')) . project_render_found_links($todo) . project_render_file_attachments($todo) . project_render_audio_attachment($todo) . project_render_voice_note_scope_prompt($sections, $projects, $todo, $scopeContextQuery), $taskActionButtons) ?>
         </form>

@@ -114,7 +114,7 @@ function project_doing_led(array $todo, string $activeItemId): string {
     $class = 'doing-led' . ($isActive ? ' active' : '');
     $label = $isActive ? project_agent_name() . ' is working on item #' . $itemId : project_agent_name() . ' is not working on item #' . $itemId;
     $title = $isActive ? project_agent_name() . ' is working on this item' : project_agent_name() . ' is not working on this item';
-    return '<span class="' . h($class) . '" aria-label="' . h($label) . '" title="' . h($title) . '">Agent active</span>';
+    return '<span class="' . h($class) . '" aria-label="' . h($label) . '" title="' . h($title) . '">Agent</span>';
 }
 
 function project_site_agent_active_light(string $activeItemId, array $contextQuery = []): string {
@@ -128,7 +128,7 @@ function project_site_agent_active_light(string $activeItemId, array $contextQue
         'task_status' => 'agent-active',
     ], fn($value) => $value !== '');
     $href = '?' . http_build_query($params);
-    return '<div class="site-agent-active-light"><a class="' . h($class) . '" href="' . h($href) . '" aria-label="' . h($label) . '" title="' . h($label) . '">Agent active</a></div>';
+    return '<div class="site-agent-active-light"><a class="' . h($class) . '" href="' . h($href) . '" aria-label="' . h($label) . '" title="' . h($label) . '">Agent</a></div>';
 }
 
 function project_item_style(array $todo): string {
@@ -588,7 +588,7 @@ function project_summary_meta_controls(array $todo, string $displayStatus, array
             . '<select name="status" class="badge ' . h($displayStatus) . ' summary-control summary-status-control status-' . h(project_theme_key($status)) . '" title="Change status" aria-label="Change status from ' . h($displayStatus) . '" onchange="boardSummaryMetaChanged(this)">' . project_status_options(PROJECT_TODO_STATUSES, $status) . '</select></form>';
     }
 
-    return $html . '</span>';
+    return $html . '</span><span class="summary-save-hint" data-summary-save-hint>Priority, Order and Status changes save at once</span>';
 }
 
 function project_sort_options(string $selected): string {

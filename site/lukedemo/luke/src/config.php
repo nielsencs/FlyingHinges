@@ -1,5 +1,4 @@
 <?php
-const PROJECT_STATUSES = ['Active', 'Watching', 'Blocked', 'Done', 'Parked'];
 const PROJECT_TODO_STATUSES = ['Open', 'Do', 'Ready', 'Done', 'Blocked'];
 const PROJECT_ITEM_STATUSES = PROJECT_TODO_STATUSES;
 const PROJECT_PRIORITIES = ['', 'Must', 'Should', 'Could', 'Won\'t'];

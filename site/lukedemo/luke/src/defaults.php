@@ -32,12 +32,12 @@ function project_default_board(): array {
             ],
         ],
         'projects' => [
-            ['slug' => 'bsm', 'section' => 'bsm-section', 'name' => 'BSM', 'status' => 'Active', 'now' => 'Hope/develop preview work and public-site alignment.', 'next' => 'Keep search, rendering, and deployment behaviour aligned with BSMT.', 'blocked' => '', 'updated_at' => $now],
-            ['slug' => 'bsmt', 'section' => 'bsm-section', 'name' => 'BSMT', 'status' => 'Active', 'now' => 'Universal target truth for decisions and public-surface expectations.', 'next' => 'Record decisions before wider implementation.', 'blocked' => '', 'updated_at' => $now],
-            ['slug' => 'bl', 'section' => 'bsm-section', 'name' => 'BL', 'status' => 'Watching', 'now' => 'Legacy/source comparison data.', 'next' => 'Use carefully as source evidence, not as universal target truth.', 'blocked' => '', 'updated_at' => $now],
-            ['slug' => 'bhu', 'section' => 'bsm-section', 'name' => 'BHU', 'status' => 'Active', 'now' => 'Raw USFM editing and queue workflow.', 'next' => 'Continue small verified workflow improvements.', 'blocked' => '', 'updated_at' => $now],
-            ['slug' => 'rfx-invoicing', 'section' => 'real-father-xmas', 'name' => 'RFX Invoicing', 'status' => 'Active', 'now' => '', 'next' => '', 'blocked' => '', 'updated_at' => $now],
-            ['slug' => 'communication', 'section' => 'the-umbrella', 'name' => 'Communication', 'status' => 'Active', 'now' => 'Voice notes and shared communications.', 'next' => '', 'blocked' => '', 'updated_at' => $now],
+            ['slug' => 'bsm', 'section' => 'bsm-section', 'name' => 'BSM', 'summary' => 'Hope/develop preview work and public-site alignment. Keep search, rendering, and deployment behaviour aligned with BSMT.', 'updated_at' => $now],
+            ['slug' => 'bsmt', 'section' => 'bsm-section', 'name' => 'BSMT', 'summary' => 'Universal target truth for decisions and public-surface expectations. Record decisions before wider implementation.', 'updated_at' => $now],
+            ['slug' => 'bl', 'section' => 'bsm-section', 'name' => 'BL', 'summary' => 'Legacy/source comparison data. Use carefully as source evidence, not as universal target truth.', 'updated_at' => $now],
+            ['slug' => 'bhu', 'section' => 'bsm-section', 'name' => 'BHU', 'summary' => 'Raw USFM editing and queue workflow. Continue small verified workflow improvements.', 'updated_at' => $now],
+            ['slug' => 'rfx-invoicing', 'section' => 'real-father-xmas', 'name' => 'RFX Invoicing', 'summary' => '', 'updated_at' => $now],
+            ['slug' => 'communication', 'section' => 'the-umbrella', 'name' => 'Communication', 'summary' => 'Voice notes and shared communications.', 'updated_at' => $now],
         ],
         'items' => [
             ['id' => 1, 'section' => 'bsm-section', 'project' => 'bsm', 'priority' => 'Must', 'status' => 'Done', 'title' => 'Make large search limits optional on BSM Hope preview', 'notes' => 'Default is limited; users can disable it for full broad searches.', 'updated_at' => $now],
@@ -74,10 +74,7 @@ function project_default_project_for_section(string $sectionSlug, string $now = 
         'slug' => project_slug($sectionSlug . '-general'),
         'section' => $sectionSlug,
         'name' => 'General',
-        'status' => 'Active',
-        'now' => '',
-        'next' => '',
-        'blocked' => '',
+        'summary' => '',
         'updated_at' => $now,
     ];
 }
@@ -130,6 +127,16 @@ function project_normalise_board(array $board): array {
     }
     unset($section);
     foreach ($board['projects'] as &$project) {
+        // Focus status, Now, Next and Blocked were folded into one Description.
+        if (array_intersect(['status', 'now', 'next', 'blocked'], array_keys($project))) {
+            $parts = [];
+            foreach (['summary', 'now', 'next', 'blocked'] as $field) {
+                $text = trim((string)($project[$field] ?? ''));
+                if ($text !== '' && $text !== 'Nothing blocked') { $parts[] = $text; }
+            }
+            $project['summary'] = implode("\n", $parts);
+            unset($project['status'], $project['now'], $project['next'], $project['blocked']);
+        }
         if (($project['section'] ?? '') === 'rfx-section') {
             $project['section'] = 'real-father-xmas';
         }
@@ -274,7 +281,9 @@ function project_save_board(array $board): void {
     $existingMode = is_file($path) ? (@fileperms($path) & 0777) : 0660;
     $existingOwner = is_file($path) ? @fileowner($path) : false;
     $existingGroup = is_file($path) ? @filegroup($path) : false;
-    project_create_backup();
+    $previous = is_file($path) ? json_decode((string)@file_get_contents($path), true) : null;
+    $previousItems = is_array($previous) ? ($previous['items'] ?? $previous['todos'] ?? []) : [];
+    project_create_backup('', project_change_summary($previousItems, $board['items'] ?? []));
     $board = project_purge_expired_binned_items($board);
     $board['updated_at'] = project_now();
     $tmp = $path . '.tmp.' . getmypid();

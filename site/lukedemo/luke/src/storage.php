@@ -9,7 +9,65 @@ function project_backup_files(): array {
     return $files;
 }
 
-function project_create_backup(): bool {
+function project_backup_meta_path(string $backup): string {
+    return preg_replace('/\.json$/', '.meta', $backup) ?? ($backup . '.meta');
+}
+
+/** Who made the save that followed this backup, and what changed. Null for older backups. */
+function project_backup_meta(string $backup): ?array {
+    $path = project_backup_meta_path($backup);
+    if (!is_file($path)) {
+        return null;
+    }
+    $data = json_decode((string)@file_get_contents($path), true);
+    return is_array($data) && isset($data['actor']) ? $data : null;
+}
+
+function project_latest_backup_meta(): ?array {
+    $files = project_backup_files();
+    return $files ? project_backup_meta($files[0]) : null;
+}
+
+/** Undo is for the user's own changes only: refuse when the agent saved last. */
+function project_undo_allowed(): bool {
+    $meta = project_latest_backup_meta();
+    return $meta === null || (string)$meta['actor'] !== project_agent_name();
+}
+
+function project_undo_prompt(): string {
+    $meta = project_latest_backup_meta();
+    $summary = $meta ? trim((string)($meta['summary'] ?? '')) : '';
+    if (!project_undo_allowed()) {
+        return 'The latest change was ' . project_agent_name() . "'s" . ($summary !== '' ? ' (' . $summary . ')' : '') . ". Undo only reverses your own changes, so nothing will be undone.";
+    }
+    return 'Undo your last saved change' . ($summary !== '' ? ': ' . $summary : '') . '?';
+}
+
+/** Short description of which items differ between two item lists. */
+function project_change_summary(array $oldItems, array $newItems): string {
+    $old = [];
+    foreach ($oldItems as $item) { $old[(string)($item['id'] ?? '')] = $item; }
+    $changed = [];
+    foreach ($newItems as $item) {
+        $id = (string)($item['id'] ?? '');
+        if (!isset($old[$id]) || $old[$id] != $item) {
+            $changed[] = $item;
+        }
+        unset($old[$id]);
+    }
+    $count = count($changed) + count($old);
+    if ($count === 0) {
+        return '';
+    }
+    if ($count === 1 && count($changed) === 1) {
+        $title = trim((string)($changed[0]['title'] ?? ''));
+        if (function_exists('mb_strimwidth')) { $title = mb_strimwidth($title, 0, 50, '…'); }
+        return '#' . (string)$changed[0]['id'] . ($title !== '' ? ' "' . $title . '"' : '');
+    }
+    return $count . ' items';
+}
+
+function project_create_backup(string $actor = '', string $summary = ''): bool {
     $path = project_data_path();
     if (!is_file($path) || filesize($path) === 0) {
         return false;
@@ -24,16 +82,20 @@ function project_create_backup(): bool {
         return false;
     }
     @chmod($backup, 0660);
+    $meta = project_backup_meta_path($backup);
+    file_put_contents($meta, json_encode(['actor' => $actor !== '' ? $actor : project_note_stamp_user(), 'summary' => $summary], JSON_UNESCAPED_SLASHES));
+    @chmod($meta, 0660);
     $files = project_backup_files();
     foreach (array_slice($files, 50) as $old) {
         @unlink($old);
+        @unlink(project_backup_meta_path($old));
     }
     return true;
 }
 
 function project_restore_latest_backup(): bool {
     $files = project_backup_files();
-    if (!$files) {
+    if (!$files || !project_undo_allowed()) {
         return false;
     }
     $path = project_data_path();
@@ -46,7 +108,7 @@ function project_restore_latest_backup(): bool {
         return false;
     }
     if (is_file($path)) {
-        project_create_backup();
+        project_create_backup('', 'undo');
     }
     $tmp = $path . '.undo.' . getmypid();
     if (!copy($latest, $tmp)) {
@@ -56,6 +118,7 @@ function project_restore_latest_backup(): bool {
     rename($tmp, $path);
     @chmod($path, 0660);
     @unlink($latest);
+    @unlink(project_backup_meta_path($latest));
     return true;
 }
 
@@ -99,7 +162,7 @@ function project_restore_backup_by_name(string $name): bool {
         mkdir($dir, 0770, true);
     }
     if (is_file($path)) {
-        project_create_backup();
+        project_create_backup('', 'restore from history');
     }
     $tmp = $path . '.restore.' . getmypid();
     if (!copy($source, $tmp)) {

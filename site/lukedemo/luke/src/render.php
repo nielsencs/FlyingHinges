@@ -49,23 +49,13 @@ function project_render_board(array $board, array $query = []): string {
     }
     $projectLines = [];
     if ($selectedProject) {
-        $projectLines[] = '<p><strong>' . h((string)($selectedProject['status'] ?? 'Active')) . '</strong></p>';
-        foreach (['now', 'next'] as $field) {
-            $value = trim((string)($selectedProject[$field] ?? ''));
-            if ($value !== '') {
-                $projectLines[] = '<p>' . h($value) . '</p>';
-            }
+        $focusSummary = trim((string)($selectedProject['summary'] ?? ''));
+        foreach (preg_split('/\R+/', $focusSummary, -1, PREG_SPLIT_NO_EMPTY) ?: [] as $line) {
+            $projectLines[] = '<p>' . h($line) . '</p>';
         }
-        $blocked = trim((string)($selectedProject['blocked'] ?? ''));
-        $projectLines[] = '<p>' . h($blocked !== '' ? $blocked : 'Nothing blocked') . '</p>';
         $projectLinks = project_render_found_links([
             'title' => (string)($selectedProject['name'] ?? ''),
-            'notes' => implode("
-", [
-                (string)($selectedProject['now'] ?? ''),
-                (string)($selectedProject['next'] ?? ''),
-                (string)($selectedProject['blocked'] ?? ''),
-            ]),
+            'notes' => $focusSummary,
         ]);
         if ($projectLinks !== '') {
             $projectLines[] = $projectLinks;

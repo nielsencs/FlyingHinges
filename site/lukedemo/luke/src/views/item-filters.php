@@ -13,7 +13,7 @@
       <div><label>Priority</label><select name="task_priority" onchange="boardDropdownChanged(this)"><?= project_filter_options(project_priority_values(), $taskPriority) ?></select></div>
       <div><label>Sort</label><select name="task_sort" onchange="boardDropdownChanged(this)"><?= project_sort_options($taskSort) ?></select></div>
       <a class="button subtle" href="?<?= h(http_build_query(['section_filter' => $sectionFilter, 'project_filter' => $projectFilter])) ?>">Reset filters</a>
-      <?php if (project_backup_files()): ?><div><label>Safety</label><button class="subtle" form="undo-last-change" type="submit">Undo last change</button></div><div><label>History</label><a class="button subtle" href="<?= h(project_url(['view' => 'history'] + $fullContextQuery)) ?>">Backup history</a></div><?php endif; ?>
+      <?php if (project_backup_files()): ?><div><label>Safety</label><button class="subtle" form="undo-last-change" type="submit">Undo my last change</button></div><div><label>History</label><a class="button subtle" href="<?= h(project_url(['view' => 'history'] + $fullContextQuery)) ?>">Backup history</a></div><?php endif; ?>
     </form>
   </div>
 </details>
