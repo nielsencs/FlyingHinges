@@ -785,7 +785,13 @@ function boardSafeNoteHtml(node, keepNewlines) {
 }
 function boardSyncFormattedNote(editor) {
   const storage = editor.parentElement.querySelector('[data-formatted-notes-storage]');
-  if (storage) storage.value = boardSafeNoteHtml(editor);
+  if (!storage) return;
+  if (editor.dataset.notesMarkdown === '1') {
+    if (!storage.hidden) return; // Code view: the textarea is the source
+    storage.value = boardNoteToMarkdown(editor);
+    return;
+  }
+  storage.value = boardSafeNoteHtml(editor);
 }
 function boardNoteTimestamp() {
   const now = new Date();
@@ -815,8 +821,12 @@ function boardEnsureNoteStamp(editor) {
   if (!editor || editor.dataset.noteStampAdded === '1') return;
   const user = (editor.dataset.noteStampUser || '').trim() || 'User';
   const stamp = user + ' ' + boardNoteTimestamp();
-  const separator = editor.textContent.trim() === '' ? '' : '<br><br>';
-  editor.innerHTML = editor.innerHTML + separator + boardEscapeNoteText(stamp) + '<br>';
+  if (editor.dataset.notesMarkdown === '1') {
+    editor.innerHTML = editor.innerHTML + (editor.textContent.trim() === '' ? '' : '<div><br></div>') + '<div>' + boardEscapeNoteText(stamp) + '</div><div><br></div>';
+  } else {
+    const separator = editor.textContent.trim() === '' ? '' : '<br><br>';
+    editor.innerHTML = editor.innerHTML + separator + boardEscapeNoteText(stamp) + '<br>';
+  }
   editor.dataset.noteStampAdded = '1';
   boardPlaceCaretAtEditorEnd(editor);
   boardSyncFormattedNote(editor);
@@ -867,6 +877,10 @@ function boardInitFormattedNotesEditors(root) {
     editor.addEventListener('paste', boardPasteFormattedNote);
     editor.addEventListener('beforeinput', function(event) { boardNoteEditorBeforeInput(editor, event); });
     editor.addEventListener('input', function() { boardSyncFormattedNote(editor); });
+    if (editor.dataset.notesMarkdown === '1' && !editor.dataset.notesToolbarReady) {
+      editor.dataset.notesToolbarReady = '1';
+      boardInitNotesToolbar(editor);
+    }
   });
 }
 function boardDuplicateSubmitted(event) {
@@ -1036,4 +1050,213 @@ window.addEventListener('online', boardFlushQueuedRecordings);
 if (boardConfig.escapeCancel) {
   document.addEventListener('keydown', boardCancelOnEscape, true);
   document.addEventListener('keyup', boardCancelOnEscape, true);
+}
+
+/* ---- Notes as Markdown (items flagged data-notes-markdown) ---- */
+function boardNoteMdEscape(text) {
+  return String(text || '').replace(/\u00a0/g, ' ').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/([\\`*~])/g, '\\$1').replace(/(?<!\w)_|_(?!\w)/g, '\\_');
+}
+function boardNoteMdPlainText(node) {
+  let text = '';
+  node.childNodes.forEach(function(k) { text += k.nodeType === Node.TEXT_NODE ? k.textContent : (k.nodeType === Node.ELEMENT_NODE ? boardNoteMdPlainText(k) : ''); });
+  return text;
+}
+function boardNoteMdInline(node) {
+  let out = '';
+  node.childNodes.forEach(function(child) {
+    if (child.nodeType === Node.TEXT_NODE) { out += boardNoteMdEscape(child.textContent.replace(/\s*[\r\n]+\s*/g, ' ')); return; }
+    if (child.nodeType !== Node.ELEMENT_NODE) return;
+    const tag = child.tagName.toLowerCase();
+    if (tag === 'br') { out += '\n'; return; }
+    if (tag === 'img') { out += boardSafeNoteImageHtml(child); return; }
+    if (tag === 'code') { out += '`' + boardNoteMdPlainText(child).replace(/`/g, '') + '`'; return; }
+    const inner = boardNoteMdInline(child);
+    if (inner === '') return;
+    if (tag === 'b' || tag === 'strong') out += '**' + inner + '**';
+    else if (tag === 'i' || tag === 'em') out += '*' + inner + '*';
+    else if (tag === 'del' || tag === 'strike') out += '~~' + inner + '~~';
+    else if (['sup', 'sub', 'u', 's'].includes(tag)) out += '<' + tag + '>' + inner + '</' + tag + '>';
+    else out += inner;
+  });
+  return out;
+}
+function boardNoteMdFixLines(text) {
+  return text.split('\n').map(function(line) {
+    return line.replace(/^(\d+)\./, '$1\\.').replace(/^([-+]) /, '\\$1 ').replace(/^#/, '\\#').replace(/^(-{2,}|={2,})\s*$/, '\\$1');
+  }).join('\n');
+}
+function boardNoteMdBlocks(node) {
+  const parts = [];
+  let cur = '';
+  const flush = function() { if (cur !== '') { parts.push({line: boardNoteMdFixLines(cur)}); cur = ''; } };
+  node.childNodes.forEach(function(child) {
+    if (child.nodeType === Node.TEXT_NODE) { cur += boardNoteMdEscape(child.textContent.replace(/\s*[\r\n]+\s*/g, ' ')); return; }
+    if (child.nodeType !== Node.ELEMENT_NODE) return;
+    const tag = child.tagName.toLowerCase();
+    if (tag === 'br') { parts.push({line: boardNoteMdFixLines(cur)}); cur = ''; return; }
+    if (['div', 'p'].includes(tag)) {
+      flush();
+      let inner = boardNoteMdInline(child);
+      const hadBreak = inner.includes('\n');
+      if (inner.endsWith('\n') && inner !== '\n') inner = inner.slice(0, -1);
+      if (inner === '\n' || (inner === '' && hadBreak)) inner = '';
+      if (inner === '' && !hadBreak) return;
+      parts.push({line: boardNoteMdFixLines(inner)});
+      return;
+    }
+    if (tag === 'ul' || tag === 'ol') {
+      flush();
+      let n = 0;
+      const items = [];
+      child.childNodes.forEach(function(li) {
+        if (li.nodeType !== Node.ELEMENT_NODE || li.tagName.toLowerCase() !== 'li') return;
+        n++;
+        items.push((tag === 'ol' ? n + '. ' : '- ') + boardNoteMdInline(li).replace(/\n+$/, '').replace(/\n/g, ' '));
+      });
+      if (items.length) parts.push({block: items.join('\n')});
+      return;
+    }
+    if (/^h[1-6]$/.test(tag)) { flush(); parts.push({block: '#'.repeat(Number(tag[1])) + ' ' + boardNoteMdInline(child).replace(/\n/g, ' ')}); return; }
+    if (tag === 'hr') { flush(); parts.push({block: '---'}); return; }
+    if (tag === 'details') {
+      flush();
+      let summary = 'Details';
+      const body = {childNodes: []};
+      child.childNodes.forEach(function(k) {
+        if (k.nodeType === Node.ELEMENT_NODE && k.tagName.toLowerCase() === 'summary') summary = boardNoteMdInline(k).replace(/\n/g, ' ').trim() || 'Details';
+        else body.childNodes.push(k);
+      });
+      const inside = boardNoteMdBlocks(body);
+      parts.push({block: '<details>\n<summary>' + summary + '</summary>\n\n' + inside + (inside === '' ? '' : '\n\n') + '</details>'});
+      return;
+    }
+    cur += boardNoteMdInline({childNodes: [child]});
+  });
+  flush();
+  let md = '';
+  parts.forEach(function(part, i) {
+    if (part.block !== undefined) { md += (md === '' ? '' : '\n\n') + part.block; return; }
+    const afterBlock = i > 0 && parts[i - 1].block !== undefined;
+    md += md === '' ? part.line : (afterBlock ? '\n\n' : '\n') + part.line;
+  });
+  return md.replace(/\n{3,}/g, '\n\n').replace(/^\n+|\n+$/g, '');
+}
+function boardNoteToMarkdown(root) {
+  return boardNoteMdBlocks(root);
+}
+function boardNoteMdWrapInline(text, start, end, mark) {
+  const m = mark.length;
+  if (start === end) return {text: text.slice(0, start) + mark + mark + text.slice(end), start: start + m, end: start + m};
+  if (start >= m && text.slice(start - m, start) === mark && text.slice(end, end + m) === mark) {
+    return {text: text.slice(0, start - m) + text.slice(start, end) + text.slice(end + m), start: start - m, end: end - m};
+  }
+  return {text: text.slice(0, start) + mark + text.slice(start, end) + mark + text.slice(end), start: start + m, end: end + m};
+}
+function boardNoteMdWrapFold(text, start, end) {
+  let before = text.slice(0, start);
+  const selected = text.slice(start, end).replace(/^\n+|\n+$/g, '');
+  let after = text.slice(end).replace(/^[ \t]+/, '');
+  if (before !== '' && !before.endsWith('\n')) before += '\n\n';
+  const open = '<details>\n<summary>';
+  const block = open + 'Summary</summary>\n\n' + selected + (selected === '' ? '' : '\n\n') + '</details>';
+  if (after !== '' && !after.startsWith('\n')) after = '\n\n' + after;
+  return {text: before + block + after, start: before.length + open.length, end: before.length + open.length + 7};
+}
+function boardNoteMdToggleLines(text, start, end, kind) {
+  const from = text.lastIndexOf('\n', start - 1) + 1;
+  let to = text.indexOf('\n', end);
+  if (to === -1) to = text.length;
+  const lines = text.slice(from, to).split('\n');
+  const pattern = kind === 'ordered' ? /^\d+\. / : /^- /;
+  const all = lines.every(function(l) { return pattern.test(l); });
+  const next = lines.map(function(l, i) { return all ? l.replace(pattern, '') : (kind === 'ordered' ? (i + 1) + '. ' : '- ') + l; }).join('\n');
+  return {text: text.slice(0, from) + next + text.slice(to), start: from, end: from + next.length};
+}
+
+function boardNotesCodeTextarea(editor) { return editor.parentElement.querySelector('[data-notes-code]'); }
+function boardNotesInCodeView(editor) { const code = boardNotesCodeTextarea(editor); return !!code && !code.hidden; }
+function boardNotesApplyCode(editor, result) {
+  const code = boardNotesCodeTextarea(editor);
+  code.value = result.text;
+  code.focus();
+  code.setSelectionRange(result.start, result.end);
+}
+function boardNotesFoldSelection(editor) {
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0 || !editor.contains(selection.anchorNode)) { editor.focus(); boardPlaceCaretAtEditorEnd(editor); }
+  const range = window.getSelection().getRangeAt(0);
+  const details = document.createElement('details');
+  const summary = document.createElement('summary');
+  summary.textContent = 'Summary';
+  details.appendChild(summary);
+  const body = range.extractContents();
+  if (!body.childNodes.length) { const empty = document.createElement('div'); empty.appendChild(document.createElement('br')); details.appendChild(empty); }
+  else {
+    const wrap = document.createElement('div');
+    wrap.appendChild(body);
+    details.appendChild(wrap);
+  }
+  range.insertNode(details);
+  details.open = true;
+  const pick = document.createRange();
+  pick.selectNodeContents(summary);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(pick);
+  boardSyncFormattedNote(editor);
+}
+function boardNotesToggleCodeView(editor, button) {
+  const code = boardNotesCodeTextarea(editor);
+  if (code.hidden) {
+    boardSyncFormattedNote(editor);
+    code.hidden = false;
+    editor.hidden = true;
+    button.setAttribute('aria-pressed', 'true');
+    code.focus();
+    return;
+  }
+  button.disabled = true;
+  const body = new URLSearchParams();
+  body.set('action', 'render_notes_markdown');
+  body.set('notes', code.value);
+  fetch(window.location.pathname, {method: 'POST', body: body, headers: {'X-Requested-With': 'fetch'}, credentials: 'same-origin'})
+    .then(function(response) { if (!response.ok) throw new Error('render'); return response.text(); })
+    .then(function(html) {
+      editor.innerHTML = html;
+      code.hidden = true;
+      editor.hidden = false;
+      button.setAttribute('aria-pressed', 'false');
+      boardSyncFormattedNote(editor);
+    })
+    .catch(function() { button.textContent = 'Failed'; window.setTimeout(function() { button.textContent = 'Code'; }, 1800); })
+    .then(function() { button.disabled = false; });
+}
+function boardInitNotesToolbar(editor) {
+  const bar = editor.parentElement.querySelector('.notes-toolbar');
+  if (!bar) return;
+  bar.addEventListener('mousedown', function(event) { if (event.target.closest('[data-notes-cmd]')) event.preventDefault(); });
+  bar.addEventListener('click', function(event) {
+    const button = event.target.closest('[data-notes-cmd]');
+    if (!button) return;
+    const cmd = button.dataset.notesCmd;
+    if (cmd === 'code') { boardNotesToggleCodeView(editor, button); return; }
+    if (boardNotesInCodeView(editor)) {
+      const code = boardNotesCodeTextarea(editor);
+      const a = code.selectionStart, b = code.selectionEnd;
+      if (cmd === 'bold') boardNotesApplyCode(editor, boardNoteMdWrapInline(code.value, a, b, '**'));
+      else if (cmd === 'italic') boardNotesApplyCode(editor, boardNoteMdWrapInline(code.value, a, b, '*'));
+      else if (cmd === 'fold') boardNotesApplyCode(editor, boardNoteMdWrapFold(code.value, a, b));
+      else boardNotesApplyCode(editor, boardNoteMdToggleLines(code.value, a, b, cmd));
+      return;
+    }
+    editor.focus();
+    boardEnsureNoteStamp(editor);
+    if (cmd === 'bold') document.execCommand('bold');
+    else if (cmd === 'italic') document.execCommand('italic');
+    else if (cmd === 'ordered') document.execCommand('insertOrderedList');
+    else if (cmd === 'bullet') document.execCommand('insertUnorderedList');
+    else if (cmd === 'fold') boardNotesFoldSelection(editor);
+    boardSyncFormattedNote(editor);
+  });
 }

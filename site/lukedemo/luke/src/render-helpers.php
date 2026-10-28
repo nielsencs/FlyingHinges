@@ -61,11 +61,29 @@ function project_render_formatted_notes(string $text): string {
     return $html;
 }
 
-function project_render_formatted_notes_editor(string $notes = ''): string {
-    return '<label>Notes</label><textarea name="notes" data-formatted-notes-storage hidden>' . h($notes) . '</textarea>'
-        . ($notes === '' ? '' : '<input type="hidden" name="notes_base" value="' . h(sha1(project_normalise_notes_text($notes))) . '">')
-        . '<div class="formatted-notes-editor" contenteditable="true" role="textbox" aria-multiline="true" data-formatted-notes-editor data-note-stamp="1" data-note-stamp-user="' . h(project_note_stamp_user()) . '">'
-        . project_render_formatted_notes($notes) . '</div>';
+function project_render_formatted_notes_editor(string $notes = '', bool $markdown = false): string {
+    $base = $notes === '' ? '' : '<input type="hidden" name="notes_base" value="' . h(sha1(project_normalise_notes_text($notes))) . '">';
+    if (!$markdown) {
+        return '<label>Notes</label><textarea name="notes" data-formatted-notes-storage hidden>' . h($notes) . '</textarea>' . $base
+            . '<div class="formatted-notes-editor" contenteditable="true" role="textbox" aria-multiline="true" data-formatted-notes-editor data-note-stamp="1" data-note-stamp-user="' . h(project_note_stamp_user()) . '">'
+            . project_render_formatted_notes($notes) . '</div>';
+    }
+    $buttons = [
+        'bold' => ['<strong>B</strong>', 'Bold'],
+        'italic' => ['<em>I</em>', 'Italic'],
+        'ordered' => ['1.', 'Numbered list'],
+        'bullet' => ['&bull;', 'Bullet list'],
+        'fold' => ['Fold', 'Fold the selection under a summary line'],
+        'code' => ['Code', 'Show or hide the raw Markdown'],
+    ];
+    $bar = '';
+    foreach ($buttons as $cmd => [$label, $title]) {
+        $bar .= '<button type="button" class="small notes-tool" data-notes-cmd="' . $cmd . '" title="' . h($title) . '" aria-label="' . h($title) . '"' . ($cmd === 'code' ? ' aria-pressed="false"' : '') . '>' . $label . '</button>';
+    }
+    return '<label>Notes</label><div class="notes-toolbar" role="toolbar" aria-label="Notes formatting">' . $bar . '</div>'
+        . '<textarea name="notes" data-formatted-notes-storage data-notes-code class="notes-code" hidden spellcheck="false">' . h($notes) . '</textarea>' . $base
+        . '<div class="formatted-notes-editor" contenteditable="true" role="textbox" aria-multiline="true" data-formatted-notes-editor data-notes-markdown="1" data-note-stamp="1" data-note-stamp-user="' . h(project_note_stamp_user()) . '">'
+        . project_render_markdown_notes($notes) . '</div>';
 }
 /** Shared by Add item and Edit item so both dialogs have the same layout: buttons, Title, Notes, buttons. */
 function project_render_item_title_notes_fields(string $title, string $notesHtml, string $buttons, string $titlePlaceholder = '', string $rowClass = '', bool $bottomButtons = true): string {

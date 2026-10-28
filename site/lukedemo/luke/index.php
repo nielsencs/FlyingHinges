@@ -36,6 +36,12 @@ if (isset($_GET['board_version'])) {
     ], JSON_UNESCAPED_SLASHES) . "\n";
     exit;
 }
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && project_field($_POST, 'action') === 'render_notes_markdown') {
+    header('Content-Type: text/html; charset=utf-8');
+    header('Cache-Control: no-store');
+    echo project_render_markdown_notes((string)($_POST['notes'] ?? ''));
+    exit;
+}
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $droppedBody = project_post_body_dropped($_POST, $_FILES, (string)($_SERVER['CONTENT_LENGTH'] ?? ''));
     $audioProblem = project_field($_POST, 'action') === 'record_audio' ? project_audio_upload_problem($_FILES) : '';
