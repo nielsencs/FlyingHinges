@@ -3,9 +3,26 @@ function project_backup_dir(): string {
     return project_data_path() . '.backups';
 }
 
+/**
+ * When a backup was taken, in microseconds. Standard backups carry the time in their name
+ * (board-YYYYMMDD-HHMMSS-<microtime>-<pid>.json); hand-named ones fall back to the file time.
+ */
+function project_backup_time(string $file): int {
+    if (preg_match('/^board-\d{8}-\d{6}-(\d{16})-\d+\.json$/', basename($file), $m)) {
+        return (int)$m[1];
+    }
+    $mtime = @filemtime($file);
+    return $mtime === false ? 0 : $mtime * 1000000;
+}
+
+/** Newest first, by when each backup was taken (never by name: hand-named backups sort after dated ones). */
 function project_backup_files(): array {
     $files = glob(project_backup_dir() . '/*.json') ?: [];
-    rsort($files, SORT_STRING);
+    $times = [];
+    foreach ($files as $file) {
+        $times[$file] = project_backup_time($file);
+    }
+    usort($files, fn($a, $b) => [$times[$b], $b] <=> [$times[$a], $a]);
     return $files;
 }
 
