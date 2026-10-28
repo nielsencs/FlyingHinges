@@ -133,7 +133,7 @@ function project_doing_led(array $todo, string $activeItemId): string {
     $class = 'doing-led' . ($isActive ? ' active' : '');
     $label = $isActive ? project_agent_name() . ' is working on item #' . $itemId : project_agent_name() . ' is not working on item #' . $itemId;
     $title = $isActive ? project_agent_name() . ' is working on this item' : project_agent_name() . ' is not working on this item';
-    return '<span class="' . h($class) . '" aria-label="' . h($label) . '" title="' . h($title) . '">Agent</span>';
+    return '<span class="' . h($class) . '" aria-label="' . h($label) . '" title="' . h($title) . '">Agent active</span>';
 }
 
 function project_site_agent_active_light(string $activeItemId, array $contextQuery = []): string {
@@ -147,7 +147,7 @@ function project_site_agent_active_light(string $activeItemId, array $contextQue
         'task_status' => 'agent-active',
     ], fn($value) => $value !== '');
     $href = '?' . http_build_query($params);
-    return '<div class="site-agent-active-light"><a class="' . h($class) . '" href="' . h($href) . '" aria-label="' . h($label) . '" title="' . h($label) . '">Agent</a></div>';
+    return '<div class="site-agent-active-light"><a class="' . h($class) . '" href="' . h($href) . '" aria-label="' . h($label) . '" title="' . h($label) . '">Agent active</a></div>';
 }
 
 function project_item_style(array $todo): string {
