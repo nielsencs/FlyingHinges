@@ -66,6 +66,18 @@ function project_md_inline(string $line): string {
     return preg_replace_callback('/\x00(\d+)\x01/', fn($m) => $tokens[(int)$m[1]] ?? '', $out) ?? $out;
 }
 
+/** Summary markup: one line stays inline; several lines become one block per line. */
+function project_render_fold_summary(string $summary): string {
+    $lines = explode("\n", trim(str_replace(["\r\n", "\r"], "\n", $summary)));
+    if (count($lines) === 1) return trim($lines[0]) === '' ? 'Details' : project_md_inline(trim($lines[0]));
+    $out = '';
+    foreach ($lines as $line) {
+        $line = trim($line);
+        $out .= $line === '' ? '<div><br></div>' : '<div>' . project_md_inline($line) . '</div>';
+    }
+    return $out;
+}
+
 function project_render_markdown_notes(string $text): string {
     $text = str_replace(["\r\n", "\r"], "\n", $text);
     $text = preg_replace('/<br\s*\/?>[ \t]*\n?/i', "\n", $text) ?? $text;
@@ -104,13 +116,28 @@ function project_render_markdown_notes(string $text): string {
             if ($summary === '' && $rest === '') {
                 $j = $i + 1;
                 while ($j < $n && trim($lines[$j]) === '') $j++;
-                if ($j < $n && preg_match('/^<\s*summary\b[^>]*>(.*?)<\s*\/\s*summary\s*>(.*)$/i', trim($lines[$j]), $sm)) {
-                    $summary = $sm[1];
-                    $rest = trim($sm[2]);
-                    $i = $j;
+                if ($j < $n && preg_match('/^<\s*summary\b[^>]*>(.*)$/i', trim($lines[$j]), $sm)) {
+                    if (preg_match('/^(.*?)<\s*\/\s*summary\s*>(.*)$/i', $sm[1], $one)) {
+                        $summary = $one[1];
+                        $rest = trim($one[2]);
+                        $i = $j;
+                    } else {
+                        // Multi-line summary: runs until the line holding </summary>.
+                        $buf = [$sm[1]];
+                        for ($k = $j + 1; $k < $n; $k++) {
+                            if (preg_match('/^(.*?)<\s*\/\s*summary\s*>(.*)$/i', trim($lines[$k]), $end)) {
+                                $buf[] = $end[1];
+                                $summary = implode("\n", $buf);
+                                $rest = trim($end[2]);
+                                $i = $k;
+                                break;
+                            }
+                            $buf[] = $lines[$k];
+                        }
+                    }
                 }
             }
-            $html .= '<details><summary>' . (trim($summary) === '' ? 'Details' : project_md_inline(trim($summary))) . '</summary>';
+            $html .= '<details><summary>' . project_render_fold_summary($summary) . '</summary>';
             $depth++;
             $lastText = false;
             $pendingBlank = false;

@@ -1124,11 +1124,11 @@ function boardNoteMdBlocks(node) {
       let summary = 'Details';
       const body = {childNodes: []};
       child.childNodes.forEach(function(k) {
-        if (k.nodeType === Node.ELEMENT_NODE && k.tagName.toLowerCase() === 'summary') summary = boardNoteMdInline(k).replace(/\n/g, ' ').trim() || 'Details';
+        if (k.nodeType === Node.ELEMENT_NODE && k.tagName.toLowerCase() === 'summary') summary = boardNoteMdBlocks(k) || 'Details';
         else body.childNodes.push(k);
       });
       const inside = boardNoteMdBlocks(body);
-      parts.push({block: '<details>\n<summary>' + summary + '</summary>\n\n' + inside + (inside === '' ? '' : '\n\n') + '</details>'});
+      parts.push({block: '<details>\n' + (summary.includes('\n') ? '<summary>\n' + summary + '\n</summary>' : '<summary>' + summary + '</summary>') + '\n\n' + inside + (inside === '' ? '' : '\n\n') + '</details>'});
       return;
     }
     cur += boardNoteMdInline({childNodes: [child]});
