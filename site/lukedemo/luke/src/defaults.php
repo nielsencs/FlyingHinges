@@ -269,6 +269,7 @@ function project_browser_version(array $board, array $query = []): string {
     return sha1(json_encode([
         'board' => project_normalise_board($board),
         'active_item_id' => project_active_item_id($query),
+        'agent_paused' => project_agent_paused(),
     ], JSON_UNESCAPED_SLASHES));
 }
 

@@ -72,6 +72,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header('Location: ./', true, 303);
         exit;
     }
+    if (project_field($_POST, 'action') === 'set_agent_pause') {
+        project_set_agent_pause(project_field($_POST, 'paused') === '1');
+        header('Location: ' . project_redirect_after_action($board, $_POST), true, 303);
+        exit;
+    }
     $redirect = project_field($_POST, 'action') === 'delete_todo' ? project_redirect_after_action($board, $_POST) : '';
     $boardBefore = $board;
     $board = project_apply_action($board, $_POST, $_FILES);

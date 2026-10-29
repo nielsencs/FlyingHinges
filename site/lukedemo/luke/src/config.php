@@ -22,6 +22,14 @@ function project_activity_path(): string {
     return dirname(project_data_path()) . '/activity.json';
 }
 
+function project_pause_path(): string {
+    $path = getenv('PROJECT_BOARD_PAUSE_PATH');
+    if ($path !== false && trim($path) !== '') {
+        return $path;
+    }
+    return dirname(project_data_path()) . '/agent-pause.json';
+}
+
 function project_quota_path(): string {
     $path = getenv('PROJECT_BOARD_QUOTA_PATH');
     if ($path !== false && trim($path) !== '') {

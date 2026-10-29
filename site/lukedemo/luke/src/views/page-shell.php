@@ -20,6 +20,7 @@
     <span class="luke-letter">L<span>ogical</span></span>&nbsp;<span class="luke-letter">U<span>nifying</span></span>&nbsp;<span class="luke-letter">K<span>nowledge</span></span>&nbsp;<span class="luke-letter">E<span>ngine</span></span>
   </h1>
   <div class="demo-controls"><a class="button small subtle" data-open-settings href="<?= h('?' . http_build_query(['view' => 'settings'] + $fullContextQuery)) ?>">Settings</a> <?= project_demo_toggle_html() ?></div>
+  <?= project_agent_pause_switch_html(['return_section' => $sectionFilter, 'return_project' => $projectFilter]) ?>
   <div class="muted">LUKE Areas, Focuses and Items.</div>
   <div class="remote-update-notice muted" hidden>Items changed elsewhere. Your edits here are not saved yet. Copy what you typed, then reload to see the latest items.</div>
 </header>

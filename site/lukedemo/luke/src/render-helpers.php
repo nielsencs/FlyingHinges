@@ -123,6 +123,55 @@ function project_active_item_id(array $query = []): string {
     return trim((string)($data['id'] ?? ''));
 }
 
+// Pause Agent switch. The flag is its own file beside the board (not in board.json),
+// so Undo and backup restores cannot flip it. A systemd path unit on this file
+// makes the watcher stop any run and stay quiet while paused.
+function project_agent_paused(): bool {
+    if (project_demo_mode()) {
+        return false;
+    }
+    $path = project_pause_path();
+    if (!is_file($path) || !is_readable($path)) {
+        return false;
+    }
+    $data = json_decode((string)file_get_contents($path), true);
+    return is_array($data) && ($data['paused'] ?? false) === true;
+}
+
+function project_set_agent_pause(bool $paused): void {
+    if (project_demo_mode()) {
+        return;
+    }
+    $path = project_pause_path();
+    $dir = dirname($path);
+    if (!is_dir($dir)) {
+        mkdir($dir, 0770, true);
+    }
+    $payload = json_encode(['paused' => $paused, 'changed_at' => gmdate('c')], JSON_UNESCAPED_SLASHES) . "\n";
+    $tmp = tempnam($dir, '.pause.');
+    file_put_contents($tmp, $payload);
+    chmod($tmp, 0664);
+    rename($tmp, $path);
+}
+
+function project_agent_pause_switch_html(array $returnContext = []): string {
+    if (project_demo_mode()) {
+        return '';
+    }
+    $paused = project_agent_paused();
+    $inputs = '';
+    foreach ($returnContext as $name => $value) {
+        if ((string)$value !== '') {
+            $inputs .= '<input type="hidden" name="' . h((string)$name) . '" value="' . h((string)$value) . '">';
+        }
+    }
+    $marker = $paused ? '<span class="agent-paused-marker" role="status">Agent paused</span> ' : '';
+    $button = $paused ? 'Resume Agent' : 'Pause Agent';
+    return '<form class="agent-pause-switch" method="post">' . $marker
+        . '<input type="hidden" name="action" value="set_agent_pause"><input type="hidden" name="paused" value="' . ($paused ? '0' : '1') . '">'
+        . $inputs . '<button type="submit" class="button small subtle">' . $button . '</button></form>';
+}
+
 function project_agent_name(): string {
     return project_demo_mode() ? 'The Agent' : 'Joel';
 }
