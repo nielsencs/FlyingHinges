@@ -981,10 +981,9 @@ summary {
 
 .limit-label b { text-align: right; color: #10141a; font-weight: 600; font-variant-numeric: tabular-nums; }
 .limit-track {
-  flex: 1 1 auto;
-  min-width: 0;
+  flex: 0 0 auto;
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(10, 3px);
   gap: 1px;
   padding: 1px;
   background: #000;
