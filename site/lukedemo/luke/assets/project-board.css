@@ -1010,6 +1010,7 @@ summary {
 .task-card[open] .summary-save-hint { display: none; }
 
 .notes-toolbar { display: flex; flex-wrap: wrap; gap: 4px; margin: 2px 0 4px; }
+.notes-toolbar-bottom { margin: 4px 0 2px; }
 .notes-toolbar .notes-tool { min-width: 2.4em; }
 .notes-toolbar .notes-tool[aria-pressed="true"] { outline: 2px solid var(--accent); }
 .notes-code { width: 100%; min-height: calc(8lh + 6px); font-family: ui-monospace, Menlo, Consolas, monospace; box-sizing: border-box; }

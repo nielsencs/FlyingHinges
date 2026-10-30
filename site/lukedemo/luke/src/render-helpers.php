@@ -80,10 +80,11 @@ function project_render_formatted_notes_editor(string $notes = '', bool $markdow
     foreach ($buttons as $cmd => [$label, $title]) {
         $bar .= '<button type="button" class="small notes-tool" data-notes-cmd="' . $cmd . '" title="' . h($title) . '" aria-label="' . h($title) . '"' . ($cmd === 'code' ? ' aria-pressed="false"' : '') . '>' . $label . '</button>';
     }
+    $barBottom = '<div class="notes-toolbar notes-toolbar-bottom" role="toolbar" aria-label="Notes formatting (below)">' . $bar . '</div>';
     return '<label>Notes</label><div class="notes-toolbar" role="toolbar" aria-label="Notes formatting">' . $bar . '</div>'
         . '<textarea name="notes" data-formatted-notes-storage data-notes-code class="notes-code" hidden spellcheck="false">' . h($notes) . '</textarea>' . $base
         . '<div class="formatted-notes-editor" contenteditable="true" role="textbox" aria-multiline="true" data-formatted-notes-editor data-notes-markdown="1" data-note-stamp="1" data-note-stamp-user="' . h(project_note_stamp_user()) . '">'
-        . project_render_markdown_notes($notes) . '</div>';
+        . project_render_markdown_notes($notes) . '</div>' . $barBottom;
 }
 /** Shared by Add item and Edit item so both dialogs have the same layout: buttons, Title, Notes, buttons. */
 function project_render_item_title_notes_fields(string $title, string $notesHtml, string $buttons, string $titlePlaceholder = '', string $rowClass = '', bool $bottomButtons = true): string {

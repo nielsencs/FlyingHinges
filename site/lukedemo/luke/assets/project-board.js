@@ -1212,7 +1212,7 @@ function boardNotesToggleCodeView(editor, button) {
     boardSyncFormattedNote(editor);
     code.hidden = false;
     editor.hidden = true;
-    button.setAttribute('aria-pressed', 'true');
+    boardNotesSyncCodeButtons(editor, true);
     code.focus();
     return;
   }
@@ -1226,15 +1226,19 @@ function boardNotesToggleCodeView(editor, button) {
       editor.innerHTML = html;
       code.hidden = true;
       editor.hidden = false;
-      button.setAttribute('aria-pressed', 'false');
+      boardNotesSyncCodeButtons(editor, false);
       boardSyncFormattedNote(editor);
     })
     .catch(function() { button.textContent = 'Failed'; window.setTimeout(function() { button.textContent = 'Code'; }, 1800); })
     .then(function() { button.disabled = false; });
 }
 function boardInitNotesToolbar(editor) {
-  const bar = editor.parentElement.querySelector('.notes-toolbar');
-  if (!bar) return;
+  editor.parentElement.querySelectorAll('.notes-toolbar').forEach(function(bar) { boardInitNotesToolbarBar(editor, bar); });
+}
+function boardNotesSyncCodeButtons(editor, pressed) {
+  editor.parentElement.querySelectorAll('[data-notes-cmd="code"]').forEach(function(b) { b.setAttribute('aria-pressed', pressed ? 'true' : 'false'); });
+}
+function boardInitNotesToolbarBar(editor, bar) {
   bar.addEventListener('mousedown', function(event) { if (event.target.closest('[data-notes-cmd]')) event.preventDefault(); });
   bar.addEventListener('click', function(event) {
     const button = event.target.closest('[data-notes-cmd]');
