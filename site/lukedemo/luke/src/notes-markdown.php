@@ -7,9 +7,9 @@
  * older inline-HTML renderer until the migration is approved.
  */
 
-/** What an item with no notes_format uses. Stays false until Carl approves migrating old notes. */
+/** What an item with no notes_format uses. Carl approved the migration on 2026-10-30. */
 function project_notes_markdown_default(): bool {
-    return false;
+    return true;
 }
 
 function project_notes_use_markdown(array $item): bool {
@@ -176,8 +176,8 @@ function project_render_markdown_notes(string $text): string {
             $pendingBlank = false;
             continue;
         }
-        if ($i + 1 < $n && preg_match('/^(={2,}|-{2,})\s*$/', $lines[$i + 1], $setext)) {
-            $level = $setext[1][0] === '=' ? 1 : 2;
+        if ($i + 1 < $n && preg_match('/^(={2,})\s*$/', $lines[$i + 1], $setext)) {
+            $level = 1;
             $html .= "<h$level>" . project_md_inline($trim) . "</h$level>";
             $i++;
             $lastText = false;
