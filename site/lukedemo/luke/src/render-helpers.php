@@ -504,7 +504,14 @@ function project_item_status_filter_query_value(mixed $raw): string {
 }
 
 function project_item_status_filter_selected(mixed $raw, string $value): bool {
-    return in_array($value, project_item_status_filter_values($raw), true);
+    $values = project_item_status_filter_values($raw);
+    if (in_array($value, $values, true)) {
+        return true;
+    }
+    if (in_array('active', $values, true) && in_array($value, ['Open', 'Do', 'Ready'], true)) {
+        return true;
+    }
+    return in_array('inactive', $values, true) && in_array($value, ['Done', 'Blocked', 'Bin'], true);
 }
 
 function project_effective_item_status_filters(mixed $raw): array {
