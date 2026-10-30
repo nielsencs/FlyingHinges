@@ -162,7 +162,7 @@ function project_agent_pause_switch_html(array $returnContext = []): string {
     $paused = project_agent_paused();
     $inputs = '';
     foreach ($returnContext as $name => $value) {
-        if ((string)$value !== '') {
+        if ((string)$value !== '' || $name === 'task_status') {
             $inputs .= '<input type="hidden" name="' . h((string)$name) . '" value="' . h((string)$value) . '">';
         }
     }
