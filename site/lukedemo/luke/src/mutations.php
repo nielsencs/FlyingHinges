@@ -218,6 +218,7 @@ function project_add_item(array $board, array $input): array {
         'status' => project_field($input, 'status', 'Open'),
         'title' => project_field($input, 'title', 'New item'),
         'notes' => project_normalise_notes_text(project_field($input, 'notes')),
+        'notes_format' => 'markdown',
         'changed_at' => $now,
         'updated_at' => $now,
     ];
@@ -248,6 +249,7 @@ function project_duplicate_item(array $board, array $input): array {
             'status' => 'Open',
             'title' => (string)($todo['title'] ?? ''),
             'notes' => '',
+            'notes_format' => 'markdown',
             'changed_at' => $now,
             'updated_at' => $now,
         ];
