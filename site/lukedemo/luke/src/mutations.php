@@ -206,6 +206,14 @@ function project_item_scope(array $board, array $input, array $existing = []): a
     return [$section, $project];
 }
 
+function project_stamp_new_notes(string $notes): string {
+    $notes = project_normalise_notes_text($notes);
+    if ($notes === '' || project_note_entry_has_stamp($notes)) {
+        return $notes;
+    }
+    return project_note_stamp_line() . "\n" . $notes;
+}
+
 function project_add_item(array $board, array $input): array {
     [$section, $project] = project_item_scope($board, $input);
     $now = project_now();
@@ -217,7 +225,7 @@ function project_add_item(array $board, array $input): array {
         'order' => max(1, min(50, (int)project_field($input, 'order', '1'))),
         'status' => project_field($input, 'status', 'Open'),
         'title' => project_field($input, 'title', 'New item'),
-        'notes' => project_normalise_notes_text(project_field($input, 'notes')),
+        'notes' => project_stamp_new_notes(project_field($input, 'notes')),
         'notes_format' => 'markdown',
         'changed_at' => $now,
         'updated_at' => $now,
@@ -665,7 +673,7 @@ function project_record_audio_item(array $board, array $input): array {
         'order' => 1,
         'status' => 'Open',
         'title' => 'Voice note' . ($titleText !== 'Voice note' && $titleText !== '' ? ': ' . $titleText : ''),
-        'notes' => $transcript,
+        'notes' => project_stamp_new_notes($transcript),
         'is_voice_note' => true,
         'audio' => [
             'file' => project_audio_public_name($name),
