@@ -714,10 +714,16 @@ function project_filter_and_sort_items(array $todos, string $sectionFilter, stri
             return false;
         }
         if ($taskQ !== '') {
-            $haystack = strtolower((string)($todo['title'] ?? '') . "
-" . (string)($todo['notes'] ?? ''));
-            if (!str_contains($haystack, strtolower($taskQ))) {
-                return false;
+            if (preg_match('/^\s*#\d+(?:[\s,]+#\d+)*\s*$/', $taskQ)) {
+                preg_match_all('/#(\d+)/', $taskQ, $idMatches);
+                if (!in_array((int)($todo['id'] ?? 0), array_map('intval', $idMatches[1]), true)) {
+                    return false;
+                }
+            } else {
+                $haystack = strtolower((string)($todo['title'] ?? '') . "\n" . (string)($todo['notes'] ?? ''));
+                if (!str_contains($haystack, strtolower($taskQ))) {
+                    return false;
+                }
             }
         }
         return true;

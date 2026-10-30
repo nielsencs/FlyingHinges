@@ -1025,3 +1025,10 @@ summary {
 
 .agent-pause-switch { margin: .25rem 0; display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
 .agent-paused-marker { padding: 2px 10px; border-radius: 999px; font-weight: 700; background: #b3261e; color: #fff; }
+
+.find-field { position: relative; display: block; }
+.find-field input { padding-right: 24px; }
+.find-field .find-clear { position: absolute; right: 2px; top: 50%; transform: translateY(-50%); width: 20px; min-width: 0; padding: 0; border: 0; background: transparent; color: var(--accent); cursor: pointer; line-height: 1; font-size: 16px; }
+.find-field .find-clear[hidden] { display: none; }
+button.find-button,
+.button.reset-filters-button { width: auto; padding-left: 8px; padding-right: 8px; }
