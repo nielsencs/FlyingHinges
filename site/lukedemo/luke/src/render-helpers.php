@@ -166,11 +166,12 @@ function project_agent_pause_switch_html(array $returnContext = []): string {
             $inputs .= '<input type="hidden" name="' . h((string)$name) . '" value="' . h((string)$value) . '">';
         }
     }
-    $marker = $paused ? '<span class="agent-paused-marker" role="status">Agent paused</span> ' : '';
-    $button = $paused ? 'Resume Agent' : 'Pause Agent';
-    return '<form class="agent-pause-switch" method="post">' . $marker
+    $label = $paused ? 'Agent paused' : 'Pause Agent';
+    $class = $paused ? 'agent-paused-marker' : 'button small subtle';
+    $title = $paused ? 'Agent is paused. Click to resume.' : 'Pause the Agent';
+    return '<form class="agent-pause-switch" method="post">'
         . '<input type="hidden" name="action" value="set_agent_pause"><input type="hidden" name="paused" value="' . ($paused ? '0' : '1') . '">'
-        . $inputs . '<button type="submit" class="button small subtle">' . $button . '</button></form>';
+        . $inputs . '<button type="submit" class="' . $class . '" title="' . h($title) . '" aria-pressed="' . ($paused ? 'true' : 'false') . '">' . $label . '</button></form>';
 }
 
 function project_agent_name(): string {
