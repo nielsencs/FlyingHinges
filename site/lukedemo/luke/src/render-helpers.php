@@ -609,7 +609,7 @@ function project_cycle_value(array $values, string $current): string {
     return (string)$values[($index + 1) % count($values)];
 }
 
-function project_item_update_hidden_inputs(array $todo, array $overrides = [], array $contextQuery = []): string {
+function project_item_update_hidden_inputs(array $todo, array $overrides = [], array $contextQuery = [], bool $withNotes = true): string {
     $values = [
         'action' => 'update_item',
         'id' => (string)($todo['id'] ?? ''),
@@ -636,7 +636,12 @@ function project_item_update_hidden_inputs(array $todo, array $overrides = [], a
     $values['base_priority'] = (string)($todo['priority'] ?? '');
     $values['base_title'] = (string)($todo['title'] ?? '');
     $values['base_order'] = (string)((int)($todo['order'] ?? 1));
-    $values['notes_base'] = sha1(project_normalise_notes_text((string)($todo['notes'] ?? '')));
+    if ($withNotes) {
+        $values['notes_base'] = sha1(project_normalise_notes_text((string)($todo['notes'] ?? '')));
+    } else {
+        // Summary dropdown forms leave Notes out (LUKE item 206): the save keeps the stored Notes.
+        unset($values['notes'], $values['notes_base']);
+    }
 
     $html = '';
     foreach ($values as $name => $value) {
@@ -655,18 +660,18 @@ function project_summary_meta_controls(array $todo, string $displayStatus, array
     $priorityClass = 'badge priority-badge summary-control summary-priority-control priority-' . project_theme_key($priority === '' ? 'blank' : $priority) . ($priority === '' ? ' blank-priority' : '');
     $html = '<span class="task-badges task-summary-controls">';
     $html .= '<form method="post" class="summary-control-form">'
-        . project_item_update_hidden_inputs($todo, [], $contextQuery)
+        . project_item_update_hidden_inputs($todo, [], $contextQuery, false)
         . '<select name="priority" class="' . h($priorityClass) . '" title="Change priority" aria-label="Change priority from ' . h($priorityLabel) . '" onchange="boardSummaryMetaChanged(this)">' . project_status_options(project_priority_values(), $priority) . '</select></form>';
 
     $html .= '<form method="post" class="summary-control-form summary-order-form">'
-        . project_item_update_hidden_inputs($todo, [], $contextQuery)
+        . project_item_update_hidden_inputs($todo, [], $contextQuery, false)
         . '<select name="order" class="summary-order-control" title="Change order" aria-label="Change order" onchange="boardSummaryMetaChanged(this)">' . project_order_options($order) . '</select></form>';
 
     if ($isBinned) {
         $html .= '<span class="badge ' . h($displayStatus) . ' summary-control summary-status-control disabled-summary-control">' . h($displayStatus) . '</span>';
     } else {
         $html .= '<form method="post" class="summary-control-form">'
-            . project_item_update_hidden_inputs($todo, [], $contextQuery)
+            . project_item_update_hidden_inputs($todo, [], $contextQuery, false)
             . '<select name="status" class="badge ' . h($displayStatus) . ' summary-control summary-status-control status-' . h(project_theme_key($status)) . '" title="Change status" aria-label="Change status from ' . h($displayStatus) . '" onchange="boardSummaryMetaChanged(this)">' . project_status_options(PROJECT_TODO_STATUSES, $status) . '</select></form>';
     }
 
