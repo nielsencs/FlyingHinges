@@ -1000,7 +1000,7 @@ summary {
 .limit-meter.stale { opacity: .55; filter: grayscale(1); }
 .limit-stale-note { grid-column: 1 / -1; font-size: 10px; color: #7a4b00; }
 
-@media (max-width:640px) { .limit-meter { width: 170px; } }
+@media (max-width:640px) { .limit-meter { position: static; transform: none; width: max-content; max-width: calc(100% - 24px); margin: 6px auto; } }
 
 .backup-history { max-height: 80vh; overflow-y: auto; }
 .backup-history .history-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 6px 0; border-bottom: 1px solid rgba(128,128,128,.25); }
