@@ -8,6 +8,7 @@ $boardConfig = [
     'taskPriority' => $taskPriority,
     'taskStatus' => $taskStatus,
     'taskSort' => $taskSort,
+    'scope' => project_scope_menu_data($sections ?? [], $projects ?? [], $scopeContextQuery ?? []),
     'escapeCancel' => in_array($view, ['add_section', 'edit_section', 'add_project', 'edit_project', 'history'], true),
 ];
 $boardJsFile = dirname(__DIR__, 2) . '/assets/project-board.js';

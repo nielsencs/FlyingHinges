@@ -255,29 +255,46 @@ function project_scope_move_form(int $todoId, string $section, string $project, 
     return $html . '<button type="submit" class="scope-choice">' . h($label) . '</button></form>';
 }
 
-function project_item_section_scope_menu(array $sections, int $todoId, string $sectionSlug, string $sectionName, string $menuId, array $contextQuery = []): string {
-    $html = '<span class="item-scope-menu"><button type="button" class="scope-label" data-scope-menu="' . h($menuId) . '" aria-expanded="false">' . h($sectionName) . '</button><span class="scope-popover" id="scope-menu-' . h($menuId) . '" hidden>';
-    $html .= '<a href="' . project_url(['section_filter' => $sectionSlug, 'project_filter' => '', 'task_status' => ''], true) . '">Show</a><strong>Change</strong>' . project_scope_move_form($todoId, $sectionSlug, '', 'No focus', $contextQuery);
+function project_scope_menu_context_fields(array $contextQuery = []): array {
+    $fields = [
+        ['return_section', (string)($contextQuery['section_filter'] ?? '')],
+        ['return_project', (string)($contextQuery['project_filter'] ?? '')],
+    ];
+    foreach (['task_q', 'task_priority', 'task_status', 'task_sort'] as $key) {
+        if (array_key_exists($key, $contextQuery)) {
+            $fields[] = [$key, (string)$contextQuery[$key]];
+        }
+    }
+    return $fields;
+}
+
+// LUKE 206: the Change choices are not in each item's HTML. The browser builds them from
+// window.boardConfig.scope the first time a menu is opened (see boardBuildScopeMenu).
+function project_scope_menu_data(array $sections, array $projects, array $contextQuery = []): array {
+    $sectionList = [];
     foreach ($sections as $section) {
         $slug = (string)($section['slug'] ?? '');
-        if ($slug === '') { continue; }
-        $html .= project_scope_move_form($todoId, $slug, '', (string)($section['name'] ?? $slug), $contextQuery);
+        if ($slug !== '') { $sectionList[] = [$slug, (string)($section['name'] ?? $slug)]; }
     }
+    $projectList = [];
+    foreach ($projects as $project) {
+        $slug = (string)($project['slug'] ?? '');
+        if ($slug !== '') { $projectList[] = [$slug, (string)($project['section'] ?? ''), (string)($project['name'] ?? $slug)]; }
+    }
+    return ['sections' => $sectionList, 'projects' => $projectList, 'context' => project_scope_menu_context_fields($contextQuery)];
+}
+
+function project_item_section_scope_menu(array $sections, int $todoId, string $sectionSlug, string $sectionName, string $menuId, array $contextQuery = []): string {
+    $html = '<span class="item-scope-menu"><button type="button" class="scope-label" data-scope-menu="' . h($menuId) . '" aria-expanded="false">' . h($sectionName) . '</button><span class="scope-popover" id="scope-menu-' . h($menuId) . '" data-scope-kind="section" data-item-id="' . h((string)$todoId) . '" data-section="' . h($sectionSlug) . '" data-project="" hidden>';
+    $html .= '<a href="' . project_url(['section_filter' => $sectionSlug, 'project_filter' => '', 'task_status' => ''], true) . '">Show</a><strong>Change</strong>';
     $html .= '<a href="' . project_url(['view' => 'add_section'] + $contextQuery) . '">New...</a></span></span>';
     return $html;
 }
 
 function project_item_project_scope_menu(array $projects, int $todoId, string $sectionSlug, string $projectSlug, string $projectName, string $menuId, array $contextQuery = []): string {
-    $html = '<span class="item-scope-menu"><button type="button" class="scope-label" data-scope-menu="' . h($menuId) . '" aria-expanded="false">' . h($projectName) . '</button><span class="scope-popover" id="scope-menu-' . h($menuId) . '" hidden>';
+    $html = '<span class="item-scope-menu"><button type="button" class="scope-label" data-scope-menu="' . h($menuId) . '" aria-expanded="false">' . h($projectName) . '</button><span class="scope-popover" id="scope-menu-' . h($menuId) . '" data-scope-kind="project" data-item-id="' . h((string)$todoId) . '" data-section="' . h($sectionSlug) . '" data-project="' . h($projectSlug) . '" hidden>';
     $showProjectFilter = $projectSlug === '' ? '__none' : $projectSlug;
-    $html .= '<a href="' . project_url(['section_filter' => $sectionSlug, 'project_filter' => $showProjectFilter, 'task_status' => ''], true) . '">Show</a><strong>Change</strong>' . project_scope_move_form($todoId, $sectionSlug, '', 'No focus', $contextQuery);
-    foreach ($projects as $project) {
-        $slug = (string)($project['slug'] ?? '');
-        if ($slug === '') { continue; }
-        $projectSection = (string)($project['section'] ?? '');
-        if ($projectSection !== $sectionSlug) { continue; }
-        $html .= project_scope_move_form($todoId, $projectSection, $slug, (string)($project['name'] ?? $slug), $contextQuery);
-    }
+    $html .= '<a href="' . project_url(['section_filter' => $sectionSlug, 'project_filter' => $showProjectFilter, 'task_status' => ''], true) . '">Show</a><strong>Change</strong>';
     $html .= '<a href="' . project_url(['view' => 'add_project', 'section_filter' => $sectionSlug]) . '">New...</a></span></span>';
     return $html;
 }

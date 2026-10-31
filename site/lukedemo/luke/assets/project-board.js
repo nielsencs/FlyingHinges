@@ -268,6 +268,41 @@ function boardCloseScopeMenus(except) {
     button.setAttribute('aria-expanded', menu && !menu.hidden ? 'true' : 'false');
   });
 }
+function boardBuildScopeMenu(menu) {
+  // LUKE 206: Change choices are built on first open from boardConfig.scope, not shipped per item.
+  if (menu.dataset.built || !window.boardConfig || !boardConfig.scope) return;
+  menu.dataset.built = '1';
+  const scope = boardConfig.scope;
+  const isSection = menu.dataset.scopeKind === 'section';
+  const section = menu.dataset.section || '';
+  const choices = [['', 'No focus', section]];
+  if (isSection) {
+    scope.sections.forEach(function(s) { choices.push(['', s[1], s[0]]); });
+  } else {
+    scope.projects.forEach(function(p) { if (p[1] === section) choices.push([p[0], p[2], p[1]]); });
+  }
+  const anchor = menu.querySelector('strong');
+  const newLink = menu.lastElementChild;
+  choices.forEach(function(c) {
+    const form = document.createElement('form');
+    form.method = 'post';
+    form.className = 'scope-choice-form';
+    const fields = [['action', 'move_item_scope'], ['id', menu.dataset.itemId], ['section', c[2]], ['project', c[0]]].concat(scope.context);
+    fields.forEach(function(f) {
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = f[0];
+      input.value = f[1];
+      form.appendChild(input);
+    });
+    const button = document.createElement('button');
+    button.type = 'submit';
+    button.className = 'scope-choice';
+    button.textContent = c[1];
+    form.appendChild(button);
+    menu.insertBefore(form, newLink);
+  });
+}
 function boardToggleScopeMenu(event) {
   const button = event.target.closest && event.target.closest('.scope-label');
   if (button) {
@@ -276,6 +311,7 @@ function boardToggleScopeMenu(event) {
     const menu = document.getElementById('scope-menu-' + button.dataset.scopeMenu);
     if (!menu) return;
     const willOpen = menu.hidden;
+    if (willOpen) boardBuildScopeMenu(menu);
     boardCloseScopeMenus(menu);
     menu.hidden = !willOpen;
     button.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
