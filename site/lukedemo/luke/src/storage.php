@@ -209,6 +209,22 @@ function project_audio_public_name(string $file): string {
     return basename($file);
 }
 
+// Parse a single HTTP byte range. null = serve whole file; false = unsatisfiable (416).
+function project_parse_byte_range(string $header, int $size) {
+    if (!preg_match('/^bytes=(\d*)-(\d*)$/', trim($header), $m) || ($m[1] === '' && $m[2] === '')) {
+        return null;
+    }
+    if ($m[1] === '') {
+        $len = (int)$m[2];
+        if ($len <= 0 || $size <= 0) return false;
+        return [max(0, $size - $len), $size - 1];
+    }
+    $start = (int)$m[1];
+    $end = $m[2] === '' ? $size - 1 : min((int)$m[2], $size - 1);
+    if ($start >= $size || $start > $end) return false;
+    return [$start, $end];
+}
+
 function project_audio_response(string $file): void {
     $path = project_audio_path($file);
     if (!is_file($path)) {
@@ -223,10 +239,35 @@ function project_audio_response(string $file): void {
             $mime = $detected;
         }
     }
+    $size = (int)filesize($path);
     header('Content-Type: ' . $mime);
-    header('Content-Length: ' . (string)filesize($path));
+    header('Accept-Ranges: bytes');
     header('X-Content-Type-Options: nosniff');
-    readfile($path);
+    $range = project_parse_byte_range((string)($_SERVER['HTTP_RANGE'] ?? ''), $size);
+    if ($range === false) {
+        http_response_code(416);
+        header('Content-Range: bytes */' . $size);
+        return;
+    }
+    if ($range === null) {
+        header('Content-Length: ' . (string)$size);
+        readfile($path);
+        return;
+    }
+    [$start, $end] = $range;
+    http_response_code(206);
+    header('Content-Range: bytes ' . $start . '-' . $end . '/' . $size);
+    header('Content-Length: ' . (string)($end - $start + 1));
+    $fh = fopen($path, 'rb');
+    fseek($fh, $start);
+    $left = $end - $start + 1;
+    while ($left > 0 && !feof($fh)) {
+        $chunk = fread($fh, min(65536, $left));
+        if ($chunk === false || $chunk === '') break;
+        echo $chunk;
+        $left -= strlen($chunk);
+    }
+    fclose($fh);
 }
 
 function project_attachment_dir(): string {
