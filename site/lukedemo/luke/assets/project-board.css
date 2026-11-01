@@ -966,7 +966,8 @@ summary {
   z-index: 1;
   width: max-content;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: auto auto auto;
+  align-items: center;
   gap: 4px 6px;
   padding: 3px 4px;
   background:
@@ -976,8 +977,9 @@ summary {
   border-radius: 3px;
   box-shadow: inset 0 1px 0 rgba(255,255,255,.7), 0 1px 3px var(--shadow);
 }
+.limit-group { font-size: 10px; line-height: 1; font-weight: 600; color: #2b313b; white-space: nowrap; }
 .limit-bar { min-width: 0; display: flex; align-items: center; gap: 3px; }
-.limit-label { display: grid; grid-template-columns: 1.9em 2.4em; gap: 0; flex: 0 0 auto; font-size: 10px; line-height: 1; color: #2b313b; white-space: nowrap; }
+.limit-label { display: grid; grid-template-columns: .7em 2.4em; gap: 0; flex: 0 0 auto; font-size: 10px; line-height: 1; color: #2b313b; white-space: nowrap; }
 
 .limit-label b { text-align: right; color: #10141a; font-weight: 600; font-variant-numeric: tabular-nums; }
 .limit-track {

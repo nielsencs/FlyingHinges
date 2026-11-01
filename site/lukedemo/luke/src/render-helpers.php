@@ -861,6 +861,7 @@ function project_limit_meter_html(): string {
     $updated = strtotime((string)($data['updated'] ?? ''));
     $stale = $updated === false || (time() - $updated) > PROJECT_QUOTA_STALE_SECONDS;
     $bars = '';
+    $prevGroup = null;
     foreach ($data['meters'] as $meter) {
         if (!is_array($meter)) continue;
         $raw = $meter['remaining'] ?? null;
@@ -868,6 +869,16 @@ function project_limit_meter_html(): string {
         $level = $stale ? 'unknown' : project_quota_level($remaining);
         $full = trim((string)($meter['label'] ?? $meter['id'] ?? ''));
         $label = trim((string)($meter['id'] ?? $full));
+        // Shared prefix (Cl, Co) is printed once per row; the bar keeps only its last letter (S, W).
+        $group = '';
+        if (strlen($label) > 1) {
+            $group = substr($label, 0, -1);
+            $label = substr($label, -1);
+        }
+        if ($group !== '' && $group !== $prevGroup) {
+            $bars .= '<span class="limit-group">' . h($group) . '</span>';
+        }
+        $prevGroup = $group;
         $reset = trim((string)($meter['reset'] ?? ''));
         $pct = $remaining === null ? '?' : $remaining . '%';
         $segments = '';
