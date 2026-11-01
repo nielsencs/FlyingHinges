@@ -1067,6 +1067,27 @@ function boardSettingsSubmit(event) {
     })
     .catch(function() { window.alert('Settings could not be saved. Your edits are untouched; try again.'); });
 }
+function boardAgentPauseSubmit(event) {
+  const form = event.target;
+  if (!form.matches || !form.matches('.agent-pause-switch') || !window.fetch || typeof FormData === 'undefined') return;
+  event.preventDefault();
+  const button = form.querySelector('button');
+  const flag = form.querySelector('input[name="paused"]');
+  const pausing = flag.value === '1';
+  return fetch(form.getAttribute('action') || './', {method: 'POST', body: new FormData(form), credentials: 'same-origin'})
+    .then(function(response) { if (!response.ok) throw new Error('Pause save failed'); return fetch('./?board_version=1', {credentials: 'same-origin', cache: 'no-store'}); })
+    .then(function(response) { return response.json(); })
+    .then(function(data) {
+      if (data && data.version) boardVersion = data.version;
+      button.textContent = pausing ? 'Agent paused' : 'Pause Agent';
+      button.className = pausing ? 'agent-paused-marker' : 'button small subtle';
+      button.setAttribute('aria-pressed', pausing ? 'true' : 'false');
+      button.title = pausing ? 'Agent is paused. Click to resume.' : 'Pause the Agent';
+      flag.value = pausing ? '0' : '1';
+    })
+    .catch(function() { window.alert('Pause Agent could not be saved. Nothing was changed; try again.'); });
+}
+document.addEventListener('submit', boardAgentPauseSubmit, true);
 document.addEventListener('click', boardSettingsClick);
 document.addEventListener('input', boardSettingsInput);
 document.addEventListener('change', boardSettingsInput);
