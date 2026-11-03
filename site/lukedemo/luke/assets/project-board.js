@@ -1234,6 +1234,8 @@ function boardNoteMdBlocks(node) {
     if (tag === 'br') { parts.push({line: boardNoteMdFixLines(cur)}); cur = ''; return; }
     if (['div', 'p'].includes(tag)) {
       flush();
+      const hasBlock = Array.prototype.some.call(child.childNodes, function(k) { return k.nodeType === Node.ELEMENT_NODE && ['ul', 'ol', 'div', 'p', 'details', 'hr'].includes(k.tagName.toLowerCase()); });
+      if (hasBlock) { const nestedMd = boardNoteMdBlocks(child); if (nestedMd !== '') parts.push({block: nestedMd}); return; }
       let inner = boardNoteMdInline(child);
       const hadBreak = inner.includes('\n');
       if (inner.endsWith('\n') && inner !== '\n') inner = inner.slice(0, -1);
