@@ -87,12 +87,12 @@ function project_render_formatted_notes_editor(string $notes = '', bool $markdow
         . project_render_markdown_notes($notes) . '</div>' . $barBottom;
 }
 /** Shared by Add item and Edit item so both dialogs have the same layout: buttons, Title, Notes, buttons. */
-function project_render_item_title_notes_fields(string $title, string $notesHtml, string $buttons, string $titlePlaceholder = '', string $rowClass = '', bool $bottomButtons = true): string {
+function project_render_item_title_notes_fields(string $title, string $notesHtml, string $buttons, string $titlePlaceholder = '', string $rowClass = '', bool $bottomButtons = true, string $bottomExtra = ''): string {
     $row = 'task-actions center-actions' . ($rowClass !== '' ? ' ' . $rowClass : '');
     return '<div class="task-actions task-actions-top center-actions' . ($rowClass !== '' ? ' ' . $rowClass : '') . '" data-item-title-notes-fields>' . $buttons . '</div>'
         . '<div><label>Title</label><input name="title" value="' . h($title) . '"' . ($titlePlaceholder !== '' ? ' placeholder="' . h($titlePlaceholder) . '"' : '') . '></div>'
         . '<div class="notes-field">' . $notesHtml . '</div>'
-        . ($bottomButtons ? '<div class="' . $row . '">' . $buttons . '</div>' : '');
+        . ($bottomButtons ? '<div class="' . $row . '">' . $buttons . $bottomExtra . '</div>' : '');
 }
 function project_theme_key(string $value): string {
     $key = strtolower(str_replace(["'", '’'], '', trim($value)));
@@ -959,4 +959,15 @@ function project_limit_meter_html(): string {
     }
     $note = $stale ? '<div class="limit-stale-note">Stale: last reading is over 15 minutes old</div>' : '';
     return '<div class="limit-meter' . ($stale ? ' stale' : '') . '" role="group" aria-label="AI model limits remaining">' . $bars . $note . '</div>';
+}
+
+/** Second copy of the Priority and Status dropdowns for the bottom button row; kept in step with the top ones by JS. */
+function project_bottom_meta_controls(array $todo): string {
+    $priority = (string)($todo['priority'] ?? '');
+    $status = (string)($todo['status'] ?? 'Open');
+    $html = '<select class="small bottom-meta" data-bottom-meta="priority" aria-label="Priority" title="Priority (same as the one at the top)">' . project_status_options(project_priority_values(), $priority) . '</select>';
+    if (!project_item_is_binned($todo)) {
+        $html .= '<select class="small bottom-meta" data-bottom-meta="status" aria-label="Status" title="Status (same as the one at the top)">' . project_status_options(PROJECT_TODO_STATUSES, $status) . '</select>';
+    }
+    return $html;
 }

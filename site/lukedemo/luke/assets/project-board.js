@@ -239,8 +239,22 @@ function boardRethemeSummarySelect(select, prefix) {
   });
   select.classList.add(prefix + '-' + boardThemeKey(select.value));
 }
+function boardBottomMetaSync(card, name, value) {
+  card.querySelectorAll('select[data-bottom-meta="' + name + '"]').forEach(function(b) { b.value = value; });
+}
+function boardBottomMetaChanged(event) {
+  const bottom = event.target.closest && event.target.closest('select[data-bottom-meta]');
+  if (!bottom) return;
+  const card = bottom.closest('.task-card');
+  const top = card && card.querySelector('summary select[name="' + bottom.dataset.bottomMeta + '"]');
+  if (!top) return;
+  top.value = bottom.value;
+  boardSummaryMetaChanged(top);
+}
+document.addEventListener('change', boardBottomMetaChanged);
 function boardSummaryMetaChanged(select) {
   const card = select.closest('.task-card');
+  if (card) boardBottomMetaSync(card, select.name, select.value);
   if (!card || !card.open) {
     boardDropdownChanged(select);
     return;
@@ -826,7 +840,8 @@ function boardSyncFormattedNote(editor, untouched) {
     if (untouched) return; // Not edited: the stored Markdown stays exactly as written
     editor.dataset.notesDirty = '1';
     if (!storage.hidden) return; // Code view: the textarea is the source
-    storage.value = boardNoteToMarkdown(editor);
+    const current = boardNoteToMarkdown(editor);
+    storage.value = typeof editor._noteOriginal === 'string' ? boardNoteMdKeepUntouched(editor._noteOriginal, editor._noteBaseline, current) : current;
     return;
   }
   storage.value = boardSafeNoteHtml(editor);
@@ -987,6 +1002,10 @@ function boardNoteRecordTyping(editor) {
 }
 function boardInitFormattedNotesEditors(root) {
   (root && root.querySelectorAll ? root : document).querySelectorAll('[data-formatted-notes-editor]').forEach(function(editor) {
+    if (editor.dataset.notesMarkdown === '1') {
+      const store = editor.parentElement.querySelector('[data-formatted-notes-storage]');
+      if (store) { editor._noteOriginal = store.value; editor._noteBaseline = boardNoteToMarkdown(editor); }
+    }
     boardSyncFormattedNote(editor, true);
     editor.addEventListener('paste', boardPasteFormattedNote);
     editor.addEventListener('beforeinput', function(event) { boardNoteEditorBeforeInput(editor, event); });
@@ -1299,6 +1318,32 @@ function boardNoteMdList(list, depth) {
   });
   return lines;
 }
+function boardNoteMdIsStampLine(line) {
+  return /^[A-Z][A-Za-z]*(?: [A-Z][A-Za-z]*)* \d{4}-\d{2}-\d{2} \d{2}:\d{2}\b/.test(line);
+}
+function boardNoteMdSplitNotes(text) {
+  const lines = String(text).split('\n');
+  const chunks = [];
+  let cur = [];
+  lines.forEach(function(line, i) {
+    if (i > 0 && boardNoteMdIsStampLine(line) && lines[i - 1].trim() === '' && cur.length) { chunks.push(cur.join('\n')); cur = []; }
+    cur.push(line);
+  });
+  chunks.push(cur.join('\n'));
+  return chunks;
+}
+/* original = stored Markdown as loaded; baseline = what the editor would save for it with no edits; current = what it saves now.
+   Notes that are the same in baseline and current are written back from the original, byte for byte. */
+function boardNoteMdKeepUntouched(original, baseline, current) {
+  const o = boardNoteMdSplitNotes(original), b = boardNoteMdSplitNotes(baseline), c = boardNoteMdSplitNotes(current);
+  if (o.length !== b.length) return current;
+  let head = 0;
+  while (head < c.length && head < b.length && c[head] === b[head]) head++;
+  let tail = 0;
+  while (tail < c.length - head && tail < b.length - head && c[c.length - 1 - tail] === b[b.length - 1 - tail]) tail++;
+  const out = o.slice(0, head).concat(c.slice(head, c.length - tail), tail ? o.slice(o.length - tail) : []);
+  return out.join('\n');
+}
 function boardNoteMdAutoMarker(text) {
   let m = /^(\d+)[.)]$/.exec(text);
   if (m) return {kind: 'ordered', start: parseInt(m[1], 10)};
@@ -1391,6 +1436,8 @@ function boardNotesToggleCodeView(editor, button) {
     .then(function(response) { if (!response.ok) throw new Error('render'); return response.text(); })
     .then(function(html) {
       editor.innerHTML = html;
+      editor._noteOriginal = code.value;
+      editor._noteBaseline = boardNoteToMarkdown(editor);
       code.hidden = true;
       editor.hidden = false;
       boardNotesSyncCodeButtons(editor, false);
