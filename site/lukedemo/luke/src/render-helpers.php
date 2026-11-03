@@ -472,7 +472,7 @@ const PROJECT_STATUS_HELP = [
     'Blocked' => 'waiting on something',
 ];
 const PROJECT_PRIORITY_HELP = [
-    'Must' => 'essential',
+    'Must' => 'essential, genuinely rare',
     'Should' => 'top normal tier',
     'Could' => 'valuable, flexible',
     'Won\'t' => 'not building now',
@@ -493,13 +493,20 @@ function project_status_help_text(): string {
     return implode(' ', $parts);
 }
 
+function project_priority_help_order(): array {
+    // Same order as the dropdown: numeric style lists 1, 2, 3, then 0 last.
+    return array_values(array_filter(project_priority_values(), static fn($p) => $p !== ''))
+        + [99 => ''];
+}
+
 function project_priority_help_name(string $priority): string {
     return $priority === '' ? 'Blank' : project_priority_label($priority);
 }
 
 function project_priority_help_text(): string {
     $parts = [];
-    foreach (PROJECT_PRIORITY_HELP as $priority => $help) {
+    foreach (project_priority_help_order() as $priority) {
+        $help = PROJECT_PRIORITY_HELP[$priority];
         $parts[] = project_priority_help_name($priority) . ' = ' . $help . '.';
     }
     return implode(' ', $parts);
@@ -511,7 +518,8 @@ function project_status_help_popup(): string {
         $html .= '<li>' . h($status . ' = ' . project_status_help_for($status) . '.') . '</li>';
     }
     $html .= '</ul><strong>Priority</strong><ul>';
-    foreach (PROJECT_PRIORITY_HELP as $priority => $help) {
+    foreach (project_priority_help_order() as $priority) {
+        $help = PROJECT_PRIORITY_HELP[$priority];
         $html .= '<li>' . h(project_priority_help_name($priority) . ' = ' . $help . '.') . '</li>';
     }
     return $html . '</ul></div></details>';
