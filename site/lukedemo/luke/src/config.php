@@ -2,6 +2,8 @@
 const PROJECT_TODO_STATUSES = ['Open', 'Do', 'Ready', 'Done', 'Blocked'];
 const PROJECT_ITEM_STATUSES = PROJECT_TODO_STATUSES;
 const PROJECT_PRIORITIES = ['', 'Must', 'Should', 'Could', 'Won\'t'];
+const PROJECT_DEFAULT_AGENT_NAME = 'Joel';
+const PROJECT_DEMO_AGENT_NAME = 'Cloudy';
 
 function project_data_path(): string {
     if (project_demo_mode()) {

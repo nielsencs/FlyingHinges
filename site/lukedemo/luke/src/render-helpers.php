@@ -175,7 +175,7 @@ function project_agent_pause_switch_html(array $returnContext = []): string {
 }
 
 function project_agent_name(): string {
-    return project_demo_mode() ? 'The Agent' : 'Joel';
+    return project_demo_mode() ? PROJECT_DEMO_AGENT_NAME : PROJECT_DEFAULT_AGENT_NAME;
 }
 
 function project_doing_led(array $todo, string $activeItemId): string {
@@ -493,10 +493,14 @@ function project_status_help_text(): string {
     return implode(' ', $parts);
 }
 
+function project_priority_help_name(string $priority): string {
+    return $priority === '' ? 'Blank' : project_priority_label($priority);
+}
+
 function project_priority_help_text(): string {
     $parts = [];
     foreach (PROJECT_PRIORITY_HELP as $priority => $help) {
-        $parts[] = ($priority === '' ? 'Blank' : $priority) . ' = ' . $help . '.';
+        $parts[] = project_priority_help_name($priority) . ' = ' . $help . '.';
     }
     return implode(' ', $parts);
 }
@@ -508,7 +512,7 @@ function project_status_help_popup(): string {
     }
     $html .= '</ul><strong>Priority</strong><ul>';
     foreach (PROJECT_PRIORITY_HELP as $priority => $help) {
-        $html .= '<li>' . h(($priority === '' ? 'Blank' : $priority) . ' = ' . $help . '.') . '</li>';
+        $html .= '<li>' . h(project_priority_help_name($priority) . ' = ' . $help . '.') . '</li>';
     }
     return $html . '</ul></div></details>';
 }

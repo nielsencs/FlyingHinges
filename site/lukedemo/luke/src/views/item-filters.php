@@ -2,7 +2,7 @@
 ?>
 <details class="items-disclosure"<?= $itemsFilterJustApplied ? '' : ' open' ?>><summary>Items: <?= h($itemsFilterLabel) ?><?php if ($sectionFilter === '' && $projectFilter === '' && ($taskStatusQuery === '' || in_array('Bin', explode(',', $taskStatusQuery), true)) && count(array_filter($board['items'] ?? [], 'project_item_is_binned')) > 0): ?> <button class="subtle danger empty-bin-button" form="empty-bin" type="submit">Empty bin</button><?php endif; ?></summary>
   <div class="items-panel">
-    <form class="toolbar" method="get">
+    <form class="toolbar items-filter-bar" method="get">
       <input type="hidden" name="section_filter" value="<?= h($sectionFilter) ?>">
       <input type="hidden" name="project_filter" value="<?= h($projectFilter) ?>">
       <input type="hidden" name="task_status" value="">
@@ -10,7 +10,7 @@
       <?php if ($recentFilterActive): ?><div><label>Recent count</label><select data-recent-count-control onchange="boardRecentCountChanged(this)"><?php foreach ($recentItemCounts as $count): ?><option value="<?= h((string)$count) ?>"<?= $count === $recentDefaultCount ? ' selected' : '' ?>><?= h((string)$count) ?></option><?php endforeach; ?></select></div><?php endif; ?>
       <div><label>Find</label><span class="find-field"><input name="task_q" value="<?= h($taskQ) ?>" placeholder="Title, notes or #123 #4"><button type="button" class="find-clear" data-find-clear aria-label="Erase Find text" title="Erase Find text" onclick="var i=this.form.elements.task_q;i.value='';i.focus();">&times;</button></span></div>
       <button class="subtle find-button">Find</button>
-      <div><label>Help</label><?= project_status_help_popup() ?></div>
+      <?= project_status_help_popup() ?>
       <div><label>Priority</label><select name="task_priority" onchange="boardDropdownChanged(this)"><?= project_filter_options(project_priority_values(), $taskPriority) ?></select></div>
       <div><label>Sort</label><select name="task_sort" onchange="boardDropdownChanged(this)"><?= project_sort_options($taskSort) ?></select></div>
       <a class="button subtle reset-filters-button" href="?<?= h(http_build_query(['section_filter' => $sectionFilter, 'project_filter' => $projectFilter])) ?>">Reset filters</a>

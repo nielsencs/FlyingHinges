@@ -1034,8 +1034,19 @@ summary {
 button.find-button,
 .button.reset-filters-button { width: auto; padding-left: 8px; padding-right: 8px; }
 
+.items-filter-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+.items-filter-bar > div { display: flex; align-items: center; gap: 3px; min-width: 0; }
+.items-filter-bar > div > label { margin: 0; }
+.items-filter-bar .task-chips { flex: 1 1 100%; }
+.items-filter-bar select, .items-filter-bar input:not([type=checkbox]) { width: auto; max-width: 100%; padding: 2px; }
+.items-filter-bar .find-field { flex: 1 1 9em; }
+.items-filter-bar .find-field input { width: 100%; min-width: 7em; }
+.items-filter-bar > div:has(.find-field) { flex: 1 1 14em; }
+.items-filter-bar button, .items-filter-bar .button { width: auto; padding: 2px 6px; }
+
 .status-help { position: relative; }
-.status-help summary { list-style: none; cursor: pointer; width: 24px; height: 24px; line-height: 22px; text-align: center; border: 1px solid var(--accent); border-radius: 50%; color: var(--accent); font-weight: 700; }
+.status-help summary { list-style: none; cursor: pointer; width: 18px; height: 18px; line-height: 16px; font-size: 12px; text-align: center; border: 1px solid var(--accent); border-radius: 50%; color: var(--accent); font-weight: 700; padding: 0; }
 .status-help summary::-webkit-details-marker { display: none; }
-.status-help-body { position: absolute; z-index: 20; left: 0; top: 30px; width: max-content; max-width: min(320px, 90vw); padding: 8px 10px; background: var(--panel, #fff); color: inherit; border: 1px solid var(--accent); border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,.25); }
+.items-filter-bar details.status-help { padding: 0; border: 0; background: transparent; }
+.status-help-body { position: absolute; z-index: 20; right: 0; top: 24px; width: max-content; max-width: min(320px, 90vw); padding: 8px 10px; background: var(--panel, #fff); color: inherit; border: 1px solid var(--accent); border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,.25); }
 .status-help-body ul { margin: 2px 0 6px; padding-left: 18px; }
