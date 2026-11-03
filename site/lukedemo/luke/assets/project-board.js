@@ -952,13 +952,47 @@ function boardPasteFormattedNote(event) {
     if (editor) boardSyncFormattedNote(editor);
   });
 }
+function boardNoteHistoryNew() { return {undo: [], redo: []}; }
+function boardNoteHistoryPush(h, value) {
+  if (h.undo.length && h.undo[h.undo.length - 1] === value) return;
+  h.undo.push(value);
+  if (h.undo.length > 100) h.undo.shift();
+  h.redo.length = 0;
+}
+function boardNoteHistoryStep(h, current, redo) {
+  const from = redo ? h.redo : h.undo, to = redo ? h.undo : h.redo;
+  if (!from.length) return null;
+  to.push(current);
+  return from.pop();
+}
+function boardNoteHistoryFor(editor) { return editor._noteHistory || (editor._noteHistory = boardNoteHistoryNew()); }
+function boardNoteRecordState(editor) { boardNoteHistoryPush(boardNoteHistoryFor(editor), editor.innerHTML); }
+function boardNoteEditorUndoKey(editor, event) {
+  if (!(event.ctrlKey || event.metaKey) || event.altKey) return;
+  const key = String(event.key).toLowerCase();
+  const redo = key === 'y' || (key === 'z' && event.shiftKey);
+  if (key !== 'z' && key !== 'y') return;
+  const h = boardNoteHistoryFor(editor);
+  const value = boardNoteHistoryStep(h, editor.innerHTML, redo);
+  if (value === null) return; // nothing recorded: leave the browser's own undo alone
+  event.preventDefault();
+  editor.innerHTML = value;
+  boardPlaceCaretAtEditorEnd(editor);
+  boardSyncFormattedNote(editor);
+}
+function boardNoteRecordTyping(editor) {
+  const now = Date.now();
+  if (now - (editor._noteTypedAt || 0) > 1000) boardNoteRecordState(editor);
+  editor._noteTypedAt = now;
+}
 function boardInitFormattedNotesEditors(root) {
   (root && root.querySelectorAll ? root : document).querySelectorAll('[data-formatted-notes-editor]').forEach(function(editor) {
     boardSyncFormattedNote(editor, true);
     editor.addEventListener('paste', boardPasteFormattedNote);
     editor.addEventListener('beforeinput', function(event) { boardNoteEditorBeforeInput(editor, event); });
     editor.addEventListener('input', function() { boardSyncFormattedNote(editor); });
-    editor.addEventListener('keydown', function(event) { boardNoteEditorTab(editor, event); });
+    editor.addEventListener('keydown', function(event) { boardNoteEditorUndoKey(editor, event); boardNoteEditorTab(editor, event); });
+    editor.addEventListener('beforeinput', function(event) { if (event.inputType !== 'historyUndo' && event.inputType !== 'historyRedo') boardNoteRecordTyping(editor); });
     if (editor.dataset.notesMarkdown === '1' && !editor.dataset.notesToolbarReady) {
       editor.dataset.notesToolbarReady = '1';
       boardInitNotesToolbar(editor);
@@ -1386,6 +1420,7 @@ function boardInitNotesToolbarBar(editor, bar) {
       return;
     }
     editor.focus();
+    boardNoteRecordState(editor);
     boardEnsureNoteStamp(editor);
     if (cmd === 'bold') document.execCommand('bold');
     else if (cmd === 'italic') document.execCommand('italic');
