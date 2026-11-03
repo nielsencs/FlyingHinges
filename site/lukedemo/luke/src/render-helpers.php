@@ -730,7 +730,12 @@ function project_item_update_hidden_inputs(array $todo, array $overrides = [], a
     return $html;
 }
 
-function project_summary_meta_controls(array $todo, string $displayStatus, array $contextQuery = []): string {
+/**
+ * The one place Priority, Order and Status dropdowns are built. Used for the top (summary) row
+ * ($bottom = false: each select in its own auto-saving form) and the bottom button row
+ * ($bottom = true: same selects, no forms, mirrored to the top ones by JS), so both always match.
+ */
+function project_render_item_triage_controls(array $todo, string $displayStatus, array $contextQuery = [], bool $bottom = false): string {
     $priority = (string)($todo['priority'] ?? '');
     $priorityLabel = $priority === '' ? 'No priority' : project_priority_label($priority);
     $order = max(1, min(50, (int)($todo['order'] ?? 1)));
@@ -738,24 +743,35 @@ function project_summary_meta_controls(array $todo, string $displayStatus, array
     $isBinned = project_item_is_binned($todo);
 
     $priorityClass = 'badge priority-badge summary-control summary-priority-control priority-' . project_theme_key($priority === '' ? 'blank' : $priority) . ($priority === '' ? ' blank-priority' : '');
+    $statusClass = 'badge ' . $displayStatus . ' summary-control summary-status-control status-' . project_theme_key($status);
+    $wrap = static function (string $select, string $formClass) use ($bottom, $todo, $contextQuery): string {
+        if ($bottom) {
+            return $select;
+        }
+        return '<form method="post" class="' . $formClass . '">' . project_item_update_hidden_inputs($todo, [], $contextQuery, false) . $select . '</form>';
+    };
+    $onchange = $bottom ? '' : ' onchange="boardSummaryMetaChanged(this)"';
+    $attrs = static function (string $name, string $title) use ($bottom): string {
+        return $bottom ? ' data-bottom-meta="' . $name . '"' : ' name="' . $name . '"';
+    };
+
     $html = '<span class="task-badges task-summary-controls">';
-    $html .= '<form method="post" class="summary-control-form">'
-        . project_item_update_hidden_inputs($todo, [], $contextQuery, false)
-        . '<select name="priority" class="' . h($priorityClass) . '" title="Change priority. ' . h(project_priority_help_text()) . '" aria-label="Change priority from ' . h($priorityLabel) . '" onchange="boardSummaryMetaChanged(this)">' . project_status_options(project_priority_values(), $priority) . '</select></form>';
-
-    $html .= '<form method="post" class="summary-control-form summary-order-form">'
-        . project_item_update_hidden_inputs($todo, [], $contextQuery, false)
-        . '<select name="order" class="summary-order-control" title="Change order" aria-label="Change order" onchange="boardSummaryMetaChanged(this)">' . project_order_options($order) . '</select></form>';
-
+    $html .= $wrap('<select' . $attrs('priority', '') . ' class="' . h($priorityClass) . '" title="Change priority. ' . h(project_priority_help_text()) . '" aria-label="Change priority from ' . h($priorityLabel) . '"' . $onchange . '>' . project_status_options(project_priority_values(), $priority) . '</select>', 'summary-control-form');
+    $html .= $wrap('<select' . $attrs('order', '') . ' class="summary-order-control" title="Change order" aria-label="Change order"' . $onchange . '>' . project_order_options($order) . '</select>', 'summary-control-form summary-order-form');
     if ($isBinned) {
         $html .= '<span class="badge ' . h($displayStatus) . ' summary-control summary-status-control disabled-summary-control">' . h($displayStatus) . '</span>';
     } else {
-        $html .= '<form method="post" class="summary-control-form">'
-            . project_item_update_hidden_inputs($todo, [], $contextQuery, false)
-            . '<select name="status" class="badge ' . h($displayStatus) . ' summary-control summary-status-control status-' . h(project_theme_key($status)) . '" title="Change status. ' . h(project_status_help_text()) . '" aria-label="Change status from ' . h($displayStatus) . '" onchange="boardSummaryMetaChanged(this)">' . project_status_options(PROJECT_TODO_STATUSES, $status) . '</select></form>';
+        $html .= $wrap('<select' . $attrs('status', '') . ' class="' . h($statusClass) . '" title="Change status. ' . h(project_status_help_text()) . '" aria-label="Change status from ' . h($displayStatus) . '"' . $onchange . '>' . project_status_options(PROJECT_TODO_STATUSES, $status) . '</select>', 'summary-control-form');
     }
+    $html .= '</span>';
+    if (!$bottom) {
+        $html .= '<span class="summary-save-hint" data-summary-save-hint>Priority, Order and Status changes save at once</span>';
+    }
+    return $html;
+}
 
-    return $html . '</span><span class="summary-save-hint" data-summary-save-hint>Priority, Order and Status changes save at once</span>';
+function project_summary_meta_controls(array $todo, string $displayStatus, array $contextQuery = []): string {
+    return project_render_item_triage_controls($todo, $displayStatus, $contextQuery, false);
 }
 
 function project_sort_options(string $selected): string {
@@ -961,17 +977,8 @@ function project_limit_meter_html(): string {
     return '<div class="limit-meter' . ($stale ? ' stale' : '') . '" role="group" aria-label="AI model limits remaining">' . $bars . $note . '</div>';
 }
 
-/** Second copy of the Priority and Status dropdowns for the bottom button row; kept in step with the top ones by JS. */
+/** Bottom copy of the triage controls: same function as the top, wrapped on its own right-hand line. */
 function project_bottom_meta_controls(array $todo): string {
-    $priority = (string)($todo['priority'] ?? '');
     $status = (string)($todo['status'] ?? 'Open');
-    $order = max(1, min(50, (int)($todo['order'] ?? 1)));
-    $priorityClass = 'badge priority-badge summary-control summary-priority-control priority-' . project_theme_key($priority === '' ? 'blank' : $priority) . ($priority === '' ? ' blank-priority' : '');
-    $html = '<div class="task-summary-meta task-bottom-meta"><span class="task-badges task-summary-controls">';
-    $html .= '<select class="' . h($priorityClass) . '" data-bottom-meta="priority" title="Priority (same as the one at the top)" aria-label="Priority">' . project_status_options(project_priority_values(), $priority) . '</select>';
-    $html .= '<select class="summary-order-control" data-bottom-meta="order" title="Order (same as the one at the top)" aria-label="Order">' . project_order_options($order) . '</select>';
-    if (!project_item_is_binned($todo)) {
-        $html .= '<select class="badge ' . h($status) . ' summary-control summary-status-control status-' . h(project_theme_key($status)) . '" data-bottom-meta="status" title="Status (same as the one at the top)" aria-label="Status">' . project_status_options(PROJECT_TODO_STATUSES, $status) . '</select>';
-    }
-    return $html . '</span></div>';
+    return '<div class="task-summary-meta task-bottom-meta">' . project_render_item_triage_controls($todo, $status, [], true) . '</div>';
 }
