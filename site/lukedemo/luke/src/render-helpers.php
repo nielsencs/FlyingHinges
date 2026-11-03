@@ -464,6 +464,55 @@ function project_item_status_label(string $status): string {
     return $status;
 }
 
+const PROJECT_STATUS_HELP = [
+    'Open' => 'discuss / plan / check',
+    'Do' => 'Joel may act',
+    'Ready' => 'Joel has handed back; you decide next',
+    'Done' => 'you accepted',
+    'Blocked' => 'waiting on something',
+];
+const PROJECT_PRIORITY_HELP = [
+    'Must' => 'essential',
+    'Should' => 'top normal tier',
+    'Could' => 'valuable, flexible',
+    'Won\'t' => 'not building now',
+    '' => 'inbox, not triaged',
+];
+
+function project_status_help_for(string $status): string {
+    $help = PROJECT_STATUS_HELP[$status] ?? '';
+    // The public demo carries no personal names.
+    return function_exists('project_demo_mode') && project_demo_mode() ? str_replace('Joel', 'the agent', $help) : $help;
+}
+
+function project_status_help_text(): string {
+    $parts = [];
+    foreach (['Open', 'Do', 'Ready', 'Done'] as $status) {
+        $parts[] = $status . ' = ' . project_status_help_for($status) . '.';
+    }
+    return implode(' ', $parts);
+}
+
+function project_priority_help_text(): string {
+    $parts = [];
+    foreach (PROJECT_PRIORITY_HELP as $priority => $help) {
+        $parts[] = ($priority === '' ? 'Blank' : $priority) . ' = ' . $help . '.';
+    }
+    return implode(' ', $parts);
+}
+
+function project_status_help_popup(): string {
+    $html = '<details class="status-help"><summary title="What do Status and Priority mean?" aria-label="Help: Status and Priority meanings">?</summary><div class="status-help-body"><strong>Status</strong><ul>';
+    foreach (['Open', 'Do', 'Ready', 'Done'] as $status) {
+        $html .= '<li>' . h($status . ' = ' . project_status_help_for($status) . '.') . '</li>';
+    }
+    $html .= '</ul><strong>Priority</strong><ul>';
+    foreach (PROJECT_PRIORITY_HELP as $priority => $help) {
+        $html .= '<li>' . h(($priority === '' ? 'Blank' : $priority) . ' = ' . $help . '.') . '</li>';
+    }
+    return $html . '</ul></div></details>';
+}
+
 function project_status_options(array $values, string $selected): string {
     $html = '';
     foreach ($values as $value) {
@@ -481,7 +530,9 @@ function project_status_options(array $values, string $selected): string {
         } else {
             $label = in_array($value, PROJECT_TODO_STATUSES, true) ? project_item_status_label($value) : project_priority_label($value);
             $valueAttribute = $label !== $value ? ' value="' . h($value) . '"' : '';
-            $html .= '<option' . $themeClass . $valueAttribute . $isSelected . '>' . h($label) . '</option>';
+            $help = in_array($value, PROJECT_TODO_STATUSES, true) ? project_status_help_for($value) : (PROJECT_PRIORITY_HELP[$value] ?? '');
+            $titleAttribute = $help !== '' ? ' title="' . h(ucfirst($help)) . '"' : '';
+            $html .= '<option' . $themeClass . $titleAttribute . $valueAttribute . $isSelected . '>' . h($label) . '</option>';
         }
     }
     return $html;
@@ -678,7 +729,7 @@ function project_summary_meta_controls(array $todo, string $displayStatus, array
     $html = '<span class="task-badges task-summary-controls">';
     $html .= '<form method="post" class="summary-control-form">'
         . project_item_update_hidden_inputs($todo, [], $contextQuery, false)
-        . '<select name="priority" class="' . h($priorityClass) . '" title="Change priority" aria-label="Change priority from ' . h($priorityLabel) . '" onchange="boardSummaryMetaChanged(this)">' . project_status_options(project_priority_values(), $priority) . '</select></form>';
+        . '<select name="priority" class="' . h($priorityClass) . '" title="Change priority. ' . h(project_priority_help_text()) . '" aria-label="Change priority from ' . h($priorityLabel) . '" onchange="boardSummaryMetaChanged(this)">' . project_status_options(project_priority_values(), $priority) . '</select></form>';
 
     $html .= '<form method="post" class="summary-control-form summary-order-form">'
         . project_item_update_hidden_inputs($todo, [], $contextQuery, false)
@@ -689,7 +740,7 @@ function project_summary_meta_controls(array $todo, string $displayStatus, array
     } else {
         $html .= '<form method="post" class="summary-control-form">'
             . project_item_update_hidden_inputs($todo, [], $contextQuery, false)
-            . '<select name="status" class="badge ' . h($displayStatus) . ' summary-control summary-status-control status-' . h(project_theme_key($status)) . '" title="Change status" aria-label="Change status from ' . h($displayStatus) . '" onchange="boardSummaryMetaChanged(this)">' . project_status_options(PROJECT_TODO_STATUSES, $status) . '</select></form>';
+            . '<select name="status" class="badge ' . h($displayStatus) . ' summary-control summary-status-control status-' . h(project_theme_key($status)) . '" title="Change status. ' . h(project_status_help_text()) . '" aria-label="Change status from ' . h($displayStatus) . '" onchange="boardSummaryMetaChanged(this)">' . project_status_options(PROJECT_TODO_STATUSES, $status) . '</select></form>';
     }
 
     return $html . '</span><span class="summary-save-hint" data-summary-save-hint>Priority, Order and Status changes save at once</span>';
