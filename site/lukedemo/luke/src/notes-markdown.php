@@ -160,18 +160,14 @@ function project_render_markdown_notes(string $text): string {
             $pendingBlank = false;
             continue;
         }
-        if (preg_match('/^([-*+]|\d+[.)])\s+/', $trim, $m)) {
-            $ordered = ctype_digit($m[1][0]);
-            $items = [];
-            $start = $ordered ? (int)$m[1] : 1;
+        if (preg_match('/^([-*+]|\d+[.)]|[a-z]\))\s+/', $trim)) {
+            $block = [];
             for (; $i < $n; $i++) {
-                $t = trim($lines[$i]);
-                if ($ordered ? !preg_match('/^\d+[.)]\s+(.*)$/', $t, $im) : !preg_match('/^[-*+]\s+(.*)$/', $t, $im)) break;
-                $items[] = '<li>' . project_md_inline($im[1]) . '</li>';
+                if (!preg_match('/^\s*([-*+]|\d+[.)]|[a-z]\))\s+/', $lines[$i])) break;
+                $block[] = $lines[$i];
             }
             $i--;
-            $tag = $ordered ? 'ol' : 'ul';
-            $html .= '<' . $tag . ($ordered && $start !== 1 ? ' start="' . $start . '"' : '') . '>' . implode('', $items) . "</$tag>";
+            $html .= project_render_markdown_list($block);
             $lastText = false;
             $pendingBlank = false;
             continue;
@@ -190,4 +186,63 @@ function project_render_markdown_notes(string $text): string {
         $pendingBlank = false;
     }
     return $html . str_repeat('</details>', $depth);
+}
+
+/**
+ * Render consecutive list lines. Nesting follows indentation; a lettered item
+ * (a) b)) directly under a numbered item nests even without indentation.
+ * Numbered lists keep their first number, lettered lists render as type="a".
+ */
+function project_render_markdown_list(array $lines): string {
+    $items = [];
+    $prevKind = '';
+    $prevIndent = 0;
+    foreach ($lines as $raw) {
+        $raw = str_replace("\t", '    ', rtrim($raw));
+        if (!preg_match('/^(\s*)([-*+]|\d+[.)]|[a-z]\))\s+(.*)$/', $raw, $m)) {
+            if ($items) $items[count($items) - 1]['text'] .= ' ' . trim($raw);
+            continue;
+        }
+        $indent = strlen($m[1]);
+        $marker = $m[2];
+        $kind = ctype_digit($marker[0]) ? 'ol' : (ctype_alpha($marker[0]) ? 'alpha' : 'ul');
+        if ($kind === 'alpha' && $indent <= $prevIndent && $prevKind === 'ol' && $items) $indent = $prevIndent + 1;
+        $start = $kind === 'ol' ? (int)$marker : ($kind === 'alpha' ? ord($marker[0]) - 96 : 1);
+        $items[] = ['indent' => $indent, 'kind' => $kind, 'start' => $start, 'text' => $m[3]];
+        $prevKind = $kind;
+        $prevIndent = $indent;
+    }
+    $pos = 0;
+    return project_render_markdown_list_level($items, $pos, $items ? $items[0]['indent'] : 0);
+}
+
+function project_render_markdown_list_level(array $items, int &$pos, int $indent): string {
+    $n = count($items);
+    $kind = $items[$pos]['kind'];
+    $start = $items[$pos]['start'];
+    $out = '';
+    while ($pos < $n && $items[$pos]['indent'] >= $indent) {
+        $item = $items[$pos];
+        if ($item['indent'] > $indent) {
+            // Deeper than this level with no parent item: treat as a sibling.
+            $item['indent'] = $indent;
+        }
+        if ($item['kind'] !== $kind) break;
+        $pos++;
+        $li = '<li>' . project_md_inline($item['text']);
+        if ($pos < $n && $items[$pos]['indent'] > $indent) {
+            $li .= project_render_markdown_list_level($items, $pos, $items[$pos]['indent']);
+        }
+        $out .= $li . '</li>';
+    }
+    $tag = $kind === 'ul' ? 'ul' : 'ol';
+    $attrs = '';
+    if ($kind !== 'ul' && $start !== 1) $attrs .= ' start="' . $start . '"';
+    if ($kind === 'alpha') $attrs .= ' type="a"';
+    $html = '<' . $tag . $attrs . '>' . $out . '</' . $tag . '>';
+    // A different list kind at the same level follows as its own list.
+    if ($pos < $n && $items[$pos]['indent'] === $indent && $items[$pos]['kind'] !== $kind) {
+        $html .= project_render_markdown_list_level($items, $pos, $indent);
+    }
+    return $html;
 }

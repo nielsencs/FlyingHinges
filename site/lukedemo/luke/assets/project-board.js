@@ -819,10 +819,12 @@ function boardSafeNoteHtml(node, keepNewlines) {
   });
   return html;
 }
-function boardSyncFormattedNote(editor) {
+function boardSyncFormattedNote(editor, untouched) {
   const storage = editor.parentElement.querySelector('[data-formatted-notes-storage]');
   if (!storage) return;
   if (editor.dataset.notesMarkdown === '1') {
+    if (untouched) return; // Not edited: the stored Markdown stays exactly as written
+    editor.dataset.notesDirty = '1';
     if (!storage.hidden) return; // Code view: the textarea is the source
     storage.value = boardNoteToMarkdown(editor);
     return;
@@ -867,7 +869,50 @@ function boardEnsureNoteStamp(editor) {
   boardPlaceCaretAtEditorEnd(editor);
   boardSyncFormattedNote(editor);
 }
+function boardNoteAutoFormat(editor, event) {
+  if (editor.dataset.notesMarkdown !== '1' || event.inputType !== 'insertText' || event.data !== ' ') return false;
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0 || !selection.isCollapsed || !editor.contains(selection.anchorNode)) return false;
+  let block = selection.anchorNode;
+  while (block && block !== editor && !(block.nodeType === 1 && ['DIV', 'P', 'LI'].includes(block.tagName))) block = block.parentNode;
+  if (!block || block === editor) return false;
+  const range = document.createRange();
+  range.selectNodeContents(block);
+  range.setEnd(selection.anchorNode, selection.anchorOffset);
+  if (range.toString() !== block.textContent) return false; // caret must be at the end of the line
+  const found = boardNoteMdAutoMarker(block.textContent);
+  if (!found) return false;
+  event.preventDefault();
+  block.textContent = '';
+  block.appendChild(document.createElement('br'));
+  const inner = document.createRange();
+  inner.setStart(block, 0);
+  inner.collapse(true);
+  selection.removeAllRanges();
+  selection.addRange(inner);
+  if (found.kind === 'heading') document.execCommand('formatBlock', false, 'h' + found.level);
+  else {
+    document.execCommand(found.kind === 'ordered' ? 'insertOrderedList' : 'insertUnorderedList');
+    if (found.kind === 'ordered' && (found.start !== 1 || found.alpha)) {
+      let node = window.getSelection().anchorNode;
+      while (node && !(node.nodeType === 1 && node.tagName === 'OL')) node = node.parentNode;
+      if (node) { if (found.start !== 1) node.setAttribute('start', String(found.start)); if (found.alpha) node.setAttribute('type', 'a'); }
+    }
+  }
+  boardSyncFormattedNote(editor);
+  return true;
+}
+function boardNoteEditorTab(editor, event) {
+  if (editor.dataset.notesMarkdown !== '1' || event.key !== 'Tab') return;
+  const node = window.getSelection() && window.getSelection().anchorNode;
+  const el = node && (node.nodeType === 1 ? node : node.parentNode);
+  if (!el || !el.closest || !el.closest('li') || !editor.contains(el)) return;
+  event.preventDefault();
+  document.execCommand(event.shiftKey ? 'outdent' : 'indent');
+  boardSyncFormattedNote(editor);
+}
 function boardNoteEditorBeforeInput(editor, event) {
+  if (boardNoteAutoFormat(editor, event)) return;
   if (!event || !event.inputType || !event.inputType.startsWith('insert')) return;
   if (!boardSelectionIsAtEditorEnd(editor)) return;
   boardEnsureNoteStamp(editor);
@@ -909,10 +954,11 @@ function boardPasteFormattedNote(event) {
 }
 function boardInitFormattedNotesEditors(root) {
   (root && root.querySelectorAll ? root : document).querySelectorAll('[data-formatted-notes-editor]').forEach(function(editor) {
-    boardSyncFormattedNote(editor);
+    boardSyncFormattedNote(editor, true);
     editor.addEventListener('paste', boardPasteFormattedNote);
     editor.addEventListener('beforeinput', function(event) { boardNoteEditorBeforeInput(editor, event); });
     editor.addEventListener('input', function() { boardSyncFormattedNote(editor); });
+    editor.addEventListener('keydown', function(event) { boardNoteEditorTab(editor, event); });
     if (editor.dataset.notesMarkdown === '1' && !editor.dataset.notesToolbarReady) {
       editor.dataset.notesToolbarReady = '1';
       boardInitNotesToolbar(editor);
@@ -1164,13 +1210,7 @@ function boardNoteMdBlocks(node) {
     }
     if (tag === 'ul' || tag === 'ol') {
       flush();
-      let n = 0;
-      const items = [];
-      child.childNodes.forEach(function(li) {
-        if (li.nodeType !== Node.ELEMENT_NODE || li.tagName.toLowerCase() !== 'li') return;
-        n++;
-        items.push((tag === 'ol' ? n + '. ' : '- ') + boardNoteMdInline(li).replace(/\n+$/, '').replace(/\n/g, ' '));
-      });
+      const items = boardNoteMdList(child, 0);
       if (items.length) parts.push({block: items.join('\n')});
       return;
     }
@@ -1198,6 +1238,40 @@ function boardNoteMdBlocks(node) {
     md += md === '' ? part.line : (afterBlock ? '\n\n' : '\n') + part.line;
   });
   return md.replace(/\n{3,}/g, '\n\n').replace(/^\n+|\n+$/g, '');
+}
+function boardNoteMdList(list, depth) {
+  const tag = list.tagName.toLowerCase();
+  const attr = function(name) { return typeof list.getAttribute === 'function' ? list.getAttribute(name) : null; };
+  const alpha = tag === 'ol' && /^a$/i.test(attr('type') || '');
+  let n = tag === 'ol' ? parseInt(attr('start'), 10) : 0;
+  if (!(n >= 1)) n = 1;
+  const lines = [];
+  const pad = '  '.repeat(depth);
+  list.childNodes.forEach(function(li) {
+    if (li.nodeType !== Node.ELEMENT_NODE || li.tagName.toLowerCase() !== 'li') return;
+    const own = {childNodes: []};
+    const nested = [];
+    li.childNodes.forEach(function(k) {
+      if (k.nodeType === Node.ELEMENT_NODE && ['ul', 'ol'].includes(k.tagName.toLowerCase())) nested.push(k);
+      else own.childNodes.push(k);
+    });
+    let marker = '- ';
+    if (tag === 'ol') marker = (alpha ? String.fromCharCode(96 + ((n - 1) % 26) + 1) + ') ' : n + '. ');
+    n++;
+    lines.push(pad + marker + boardNoteMdInline(own).replace(/\n+$/, '').replace(/\n/g, ' '));
+    nested.forEach(function(sub) { boardNoteMdList(sub, depth + 1).forEach(function(l) { lines.push(l); }); });
+  });
+  return lines;
+}
+function boardNoteMdAutoMarker(text) {
+  let m = /^(\d+)[.)]$/.exec(text);
+  if (m) return {kind: 'ordered', start: parseInt(m[1], 10)};
+  m = /^([a-z])\)$/.exec(text);
+  if (m) return {kind: 'ordered', start: m[1].charCodeAt(0) - 96, alpha: true};
+  if (/^[-*+]$/.test(text)) return {kind: 'bullet'};
+  m = /^(#{1,6})$/.exec(text);
+  if (m) return {kind: 'heading', level: m[1].length};
+  return null;
 }
 function boardNoteToMarkdown(root) {
   return boardNoteMdBlocks(root);
@@ -1266,7 +1340,7 @@ function boardNotesFoldSelection(editor) {
 function boardNotesToggleCodeView(editor, button) {
   const code = boardNotesCodeTextarea(editor);
   if (code.hidden) {
-    boardSyncFormattedNote(editor);
+    if (editor.dataset.notesDirty === '1') boardSyncFormattedNote(editor);
     code.hidden = false;
     editor.hidden = true;
     boardNotesSyncCodeButtons(editor, true);
@@ -1284,7 +1358,7 @@ function boardNotesToggleCodeView(editor, button) {
       code.hidden = true;
       editor.hidden = false;
       boardNotesSyncCodeButtons(editor, false);
-      boardSyncFormattedNote(editor);
+      editor.dataset.notesDirty = '';
     })
     .catch(function() { button.textContent = 'Failed'; window.setTimeout(function() { button.textContent = 'Code'; }, 1800); })
     .then(function() { button.disabled = false; });
