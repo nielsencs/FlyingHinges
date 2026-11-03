@@ -91,7 +91,7 @@ function project_render_board(array $board, array $query = []): string {
         'task_sort' => $taskSort !== 'order' ? $taskSort : '',
     ], fn($value) => $value !== '');
     $contextUrl = $fullContextQuery ? '?' . http_build_query($fullContextQuery) : '';
-    $addItemSectionFilter = $sectionFilter !== '' ? $sectionFilter : project_first_section_slug($board);
+    $addItemSectionFilter = $sectionFilter !== '' ? $sectionFilter : 'unassigned';
     $addItemProjectFilter = '';
     if ($projectFilter !== '' && $projectFilter !== '__none') {
         foreach ($projects as $project) {
@@ -101,7 +101,7 @@ function project_render_board(array $board, array $query = []): string {
             }
         }
     }
-    if ($addItemProjectFilter === '') {
+    if ($addItemProjectFilter === '' && $addItemSectionFilter !== 'unassigned') {
         $addItemProjectFilter = project_first_project_slug($board, $addItemSectionFilter);
     }
     $returnContextInputs = '<input type="hidden" name="return_section" value="' . h($sectionFilter) . '"><input type="hidden" name="return_project" value="' . h($projectFilter) . '"><input type="hidden" name="task_q" value="' . h($taskQ) . '"><input type="hidden" name="task_priority" value="' . h($taskPriority) . '"><input type="hidden" name="task_status" value="' . h($taskStatusQuery) . '"><input type="hidden" name="task_sort" value="' . h($taskSort) . '">' . ($justEditedItemId !== '' ? '<input type="hidden" name="just_edited_item_id" value="' . h($justEditedItemId) . '">' : '');

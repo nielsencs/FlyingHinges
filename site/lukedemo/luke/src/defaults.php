@@ -30,6 +30,12 @@ function project_default_board(): array {
                 'summary' => 'Shared communications, notes, recordings, and general capture.',
                 'updated_at' => $now,
             ],
+            [
+                'slug' => 'unassigned',
+                'name' => 'Unassigned',
+                'summary' => 'Inbox for new items with no Area chosen. Joel asks which Area it belongs to before treating it as any one project.',
+                'updated_at' => $now,
+            ],
         ],
         'projects' => [
             ['slug' => 'bsm', 'section' => 'bsm-section', 'name' => 'BSM', 'summary' => 'Hope/develop preview work and public-site alignment. Keep search, rendering, and deployment behaviour aligned with BSMT.', 'updated_at' => $now],

@@ -190,9 +190,9 @@ function project_project_section(array $board, string $projectSlug): string {
 }
 
 function project_item_scope(array $board, array $input, array $existing = []): array {
-    $section = project_field($input, 'section', (string)($existing['section'] ?? project_first_section_slug($board)));
+    $section = project_field($input, 'section', (string)($existing['section'] ?? 'unassigned'));
     if (!in_array($section, project_section_slugs($board), true)) {
-        $section = project_first_section_slug($board);
+        $section = in_array('unassigned', project_section_slugs($board), true) ? 'unassigned' : project_first_section_slug($board);
     }
     $project = project_field($input, 'project', (string)($existing['project'] ?? ''));
     if ($project !== '') {
