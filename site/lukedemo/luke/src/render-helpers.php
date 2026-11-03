@@ -377,58 +377,46 @@ function project_render_file_attachments(array $todo): string {
     return $html . '</ul></div>';
 }
 
-function project_project_options(array $projects, string $selected = '', string $section = ''): string {
-    $html = '<option value=""' . ($selected === '' ? ' selected' : '') . '>All focuses</option>';
-    $html .= '<option value="__none"' . ($selected === '__none' ? ' selected' : '') . '>No focus</option>';
-    foreach ($projects as $project) {
-        if ($section !== '' && ($project['section'] ?? '') !== $section) {
+function project_option_tag(string $value, string $label, bool $selected, string $extraAttrs = ''): string {
+    return '<option value="' . h($value) . '"' . $extraAttrs . ($selected ? ' selected' : '') . '>' . h($label) . '</option>';
+}
+
+function project_slug_option_tags(array $items, string $selected, callable $include = null, callable $extraAttrs = null): string {
+    $html = '';
+    foreach ($items as $item) {
+        $slug = (string)($item['slug'] ?? '');
+        if ($slug === '' || ($include !== null && !$include($item))) {
             continue;
         }
-        $isSelected = ($project['slug'] ?? '') === $selected ? ' selected' : '';
-        $html .= '<option value="' . h((string)$project['slug']) . '"' . $isSelected . '>' . h((string)$project['name']) . '</option>';
+        $html .= project_option_tag($slug, (string)($item['name'] ?? $slug), $slug === $selected, $extraAttrs !== null ? $extraAttrs($item) : '');
     }
     return $html;
 }
 
-function project_section_options(array $sections, string $selected = ''): string {
-    $html = '<option value=""' . ($selected === '' ? ' selected' : '') . '>All areas</option>';
-    foreach ($sections as $section) {
-        $isSelected = ($section['slug'] ?? '') === $selected ? ' selected' : '';
-        $html .= '<option value="' . h((string)$section['slug']) . '"' . $isSelected . '>' . h((string)$section['name']) . '</option>';
-    }
-    return $html;
+function project_project_options(array $projects, string $selected = '', string $section = ''): string {
+    return project_option_tag('', 'All focuses', $selected === '')
+        . project_option_tag('__none', 'No focus', $selected === '__none')
+        . project_slug_option_tags($projects, $selected, fn($project) => $section === '' || ($project['section'] ?? '') === $section);
+}
+
+function project_section_options(array $sections, string $selected = '', bool $withAll = true): string {
+    return ($withAll ? project_option_tag('', 'All areas', $selected === '') : '')
+        . project_slug_option_tags($sections, $selected);
 }
 
 function project_section_scope_options(array $sections, string $selected = ''): string {
-    $html = '';
-    foreach ($sections as $section) {
-        $slug = (string)($section['slug'] ?? '');
-        if ($slug === '') {
-            continue;
-        }
-        $isSelected = $slug === $selected ? ' selected' : '';
-        $html .= '<option value="' . h($slug) . '"' . $isSelected . '>' . h((string)($section['name'] ?? $slug)) . '</option>';
-    }
-    return $html;
+    return project_section_options($sections, $selected, false);
 }
 
 function project_project_scope_options(array $projects, string $selected = '', string $section = '', bool $keepOtherSectionsForDynamicFilter = false): string {
-    $html = '<option value="" data-section=""' . ($selected === '' ? ' selected' : '') . '>No focus</option>';
-    foreach ($projects as $project) {
-        $slug = (string)($project['slug'] ?? '');
-        if ($slug === '') {
-            continue;
-        }
-        $projectSection = (string)($project['section'] ?? '');
-        $isOtherSection = $section !== '' && $projectSection !== $section;
-        if ($isOtherSection && !$keepOtherSectionsForDynamicFilter) {
-            continue;
-        }
-        $isSelected = $slug === $selected ? ' selected' : '';
-        $hiddenUntilSectionSelected = $isOtherSection ? ' hidden disabled' : '';
-        $html .= '<option value="' . h($slug) . '" data-section="' . h($projectSection) . '"' . $isSelected . $hiddenUntilSectionSelected . '>' . h((string)($project['name'] ?? $slug)) . '</option>';
-    }
-    return $html;
+    $isOther = fn($project) => $section !== '' && (string)($project['section'] ?? '') !== $section;
+    return project_option_tag('', 'No focus', $selected === '', ' data-section=""')
+        . project_slug_option_tags(
+            $projects,
+            $selected,
+            fn($project) => $keepOtherSectionsForDynamicFilter || !$isOther($project),
+            fn($project) => ' data-section="' . h((string)($project['section'] ?? '')) . '"' . ($isOther($project) ? ' hidden disabled' : '')
+        );
 }
 
 function project_item_needs_voice_scope_prompt(array $todo): bool {
@@ -525,6 +513,10 @@ function project_status_help_popup(): string {
     return $html . '</ul></div></details>';
 }
 
+function project_value_label(string $value): string {
+    return in_array($value, PROJECT_TODO_STATUSES, true) ? project_item_status_label($value) : project_priority_label($value);
+}
+
 function project_status_options(array $values, string $selected): string {
     $html = '';
     foreach ($values as $value) {
@@ -540,7 +532,7 @@ function project_status_options(array $values, string $selected): string {
         if ($value === '') {
             $html .= '<option value=""' . $themeClass . $isSelected . '></option>';
         } else {
-            $label = in_array($value, PROJECT_TODO_STATUSES, true) ? project_item_status_label($value) : project_priority_label($value);
+            $label = project_value_label($value);
             $valueAttribute = $label !== $value ? ' value="' . h($value) . '"' : '';
             $help = in_array($value, PROJECT_TODO_STATUSES, true) ? project_status_help_for($value) : (PROJECT_PRIORITY_HELP[$value] ?? '');
             $titleAttribute = $help !== '' ? ' title="' . h(ucfirst($help)) . '"' : '';
@@ -559,7 +551,7 @@ function project_filter_options(array $values, string $selected, string $allLabe
             continue;
         }
         $isSelected = $value === $selected ? ' selected' : '';
-        $label = in_array($value, PROJECT_TODO_STATUSES, true) ? project_item_status_label($value) : project_priority_label($value);
+        $label = project_value_label($value);
         $html .= '<option value="' . h($value) . '"' . $isSelected . '>' . h($label) . '</option>';
     }
     return $html;
