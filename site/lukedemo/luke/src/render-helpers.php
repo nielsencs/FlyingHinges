@@ -92,7 +92,7 @@ function project_render_item_title_notes_fields(string $title, string $notesHtml
     return '<div class="task-actions task-actions-top center-actions' . ($rowClass !== '' ? ' ' . $rowClass : '') . '" data-item-title-notes-fields>' . $buttons . '</div>'
         . '<div><label>Title</label><input name="title" value="' . h($title) . '"' . ($titlePlaceholder !== '' ? ' placeholder="' . h($titlePlaceholder) . '"' : '') . '></div>'
         . '<div class="notes-field">' . $notesHtml . '</div>'
-        . ($bottomButtons ? '<div class="' . $row . '">' . $buttons . $bottomExtra . '</div>' : '');
+        . ($bottomButtons ? '<div class="' . $row . '">' . $buttons . '</div>' . $bottomExtra : '');
 }
 function project_theme_key(string $value): string {
     $key = strtolower(str_replace(["'", '’'], '', trim($value)));
@@ -965,9 +965,13 @@ function project_limit_meter_html(): string {
 function project_bottom_meta_controls(array $todo): string {
     $priority = (string)($todo['priority'] ?? '');
     $status = (string)($todo['status'] ?? 'Open');
-    $html = '<select class="small bottom-meta" data-bottom-meta="priority" aria-label="Priority" title="Priority (same as the one at the top)">' . project_status_options(project_priority_values(), $priority) . '</select>';
+    $order = max(1, min(50, (int)($todo['order'] ?? 1)));
+    $priorityClass = 'badge priority-badge summary-control summary-priority-control priority-' . project_theme_key($priority === '' ? 'blank' : $priority) . ($priority === '' ? ' blank-priority' : '');
+    $html = '<div class="task-summary-meta task-bottom-meta"><span class="task-badges task-summary-controls">';
+    $html .= '<select class="' . h($priorityClass) . '" data-bottom-meta="priority" title="Priority (same as the one at the top)" aria-label="Priority">' . project_status_options(project_priority_values(), $priority) . '</select>';
+    $html .= '<select class="summary-order-control" data-bottom-meta="order" title="Order (same as the one at the top)" aria-label="Order">' . project_order_options($order) . '</select>';
     if (!project_item_is_binned($todo)) {
-        $html .= '<select class="small bottom-meta" data-bottom-meta="status" aria-label="Status" title="Status (same as the one at the top)">' . project_status_options(PROJECT_TODO_STATUSES, $status) . '</select>';
+        $html .= '<select class="badge ' . h($status) . ' summary-control summary-status-control status-' . h(project_theme_key($status)) . '" data-bottom-meta="status" title="Status (same as the one at the top)" aria-label="Status">' . project_status_options(PROJECT_TODO_STATUSES, $status) . '</select>';
     }
-    return $html;
+    return $html . '</span></div>';
 }

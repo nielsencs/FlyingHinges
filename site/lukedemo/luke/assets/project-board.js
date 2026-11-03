@@ -240,7 +240,10 @@ function boardRethemeSummarySelect(select, prefix) {
   select.classList.add(prefix + '-' + boardThemeKey(select.value));
 }
 function boardBottomMetaSync(card, name, value) {
-  card.querySelectorAll('select[data-bottom-meta="' + name + '"]').forEach(function(b) { b.value = value; });
+  card.querySelectorAll('select[data-bottom-meta="' + name + '"]').forEach(function(b) { 
+    b.value = value;
+    if (name === 'priority' || name === 'status') boardRethemeSummarySelect(b, name);
+  });
 }
 function boardBottomMetaChanged(event) {
   const bottom = event.target.closest && event.target.closest('select[data-bottom-meta]');
