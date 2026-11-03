@@ -513,7 +513,7 @@ function project_priority_help_text(): string {
 }
 
 function project_status_help_popup(): string {
-    $html = '<details class="status-help"><summary title="What do Status and Priority mean?" aria-label="Help: Status and Priority meanings">?</summary><div class="status-help-body"><strong>Status</strong><ul>';
+    $html = '<details class="status-help"><summary title="What do Status and Priority mean?" aria-label="Help: Status and Priority meanings">?</summary><div class="status-help-body" onclick="this.parentNode.open=false"><strong>Status</strong><ul>';
     foreach (['Open', 'Do', 'Ready', 'Done'] as $status) {
         $html .= '<li>' . h($status . ' = ' . project_status_help_for($status) . '.') . '</li>';
     }
