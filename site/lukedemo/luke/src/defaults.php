@@ -279,7 +279,7 @@ function project_browser_version(array $board, array $query = []): string {
     ], JSON_UNESCAPED_SLASHES));
 }
 
-function project_save_board(array $board): void {
+function project_save_board(array $board, string $actor = ''): void {
     $path = project_data_path();
     $dir = dirname($path);
     if (!is_dir($dir)) {
@@ -290,7 +290,7 @@ function project_save_board(array $board): void {
     $existingGroup = is_file($path) ? @filegroup($path) : false;
     $previous = is_file($path) ? json_decode((string)@file_get_contents($path), true) : null;
     $previousItems = is_array($previous) ? ($previous['items'] ?? $previous['todos'] ?? []) : [];
-    project_create_backup('', project_change_summary($previousItems, $board['items'] ?? []));
+    project_create_backup($actor, project_change_summary($previousItems, $board['items'] ?? []));
     $board = project_purge_expired_binned_items($board);
     foreach (['items', 'todos'] as $listKey) {
         foreach ($board[$listKey] ?? [] as $i => $item) {

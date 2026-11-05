@@ -7,6 +7,9 @@ if (isset($_GET['demo']) && !project_demo_forced()) {
     exit;
 }
 project_demo_start();
+if (isset($_GET['agent_door'])) {
+    agent_door_handle((string)$_GET['agent_door']);
+}
 if (project_demo_mode() && (isset($_GET['audio']) || isset($_GET['attachment']) || isset($_GET['noteimage']))) {
     http_response_code(404);
     echo 'Not available in demo';

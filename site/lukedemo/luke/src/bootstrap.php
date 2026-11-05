@@ -6,6 +6,7 @@ require_once __DIR__ . '/settings.php';
 require_once __DIR__ . '/defaults.php';
 require_once __DIR__ . '/mutations.php';
 require_once __DIR__ . '/actions.php';
+require_once __DIR__ . '/agent-door.php';
 require_once __DIR__ . '/render-helpers.php';
 require_once __DIR__ . '/notes-markdown.php';
 require_once __DIR__ . '/render.php';
