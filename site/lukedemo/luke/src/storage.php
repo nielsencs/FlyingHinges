@@ -5,10 +5,10 @@ function project_backup_dir(): string {
 
 /**
  * When a backup was taken, in microseconds. Standard backups carry the time in their name
- * (board-YYYYMMDD-HHMMSS-<microtime>-<pid>.json); hand-named ones fall back to the file time.
+ * (luke-YYYYMMDD-HHMMSS-<microtime>-<pid>.json); hand-named ones fall back to the file time.
  */
 function project_backup_time(string $file): int {
-    if (preg_match('/^board-\d{8}-\d{6}-(\d{16})-\d+\.json$/', basename($file), $m)) {
+    if (preg_match('/^(?:luke|board)-\d{8}-\d{6}-(\d{16})-\d+\.json$/', basename($file), $m)) {
         return (int)$m[1];
     }
     $mtime = @filemtime($file);
@@ -94,7 +94,7 @@ function project_create_backup(string $actor = '', string $summary = ''): bool {
         mkdir($dir, 0770, true);
     }
     $stamp = gmdate('Ymd-His') . '-' . str_replace('.', '', sprintf('%.6F', microtime(true))) . '-' . getmypid();
-    $backup = $dir . '/board-' . $stamp . '.json';
+    $backup = $dir . '/luke-' . $stamp . '.json';
     if (!copy($path, $backup)) {
         return false;
     }
@@ -145,7 +145,7 @@ function project_backup_history(): array {
     foreach (project_backup_files() as $file) {
         $name = basename($file);
         $time = '';
-        if (preg_match('/^board-(\d{8})-(\d{6})-/', $name, $m)) {
+        if (preg_match('/^(?:luke|board)-(\d{8})-(\d{6})-/', $name, $m)) {
             $dt = DateTime::createFromFormat('YmdHis', $m[1] . $m[2], new DateTimeZone('UTC'));
             if ($dt) {
                 $time = $dt->setTimezone(new DateTimeZone('Europe/London'))->format('Y-m-d H:i:s');
@@ -162,7 +162,7 @@ function project_backup_history(): array {
 }
 
 function project_restore_backup_by_name(string $name): bool {
-    if (!preg_match('/^board-[0-9A-Za-z-]+\.json$/', $name)) {
+    if (!preg_match('/^(?:luke|board)-[0-9A-Za-z-]+\.json$/', $name)) {
         return false;
     }
     $source = project_backup_dir() . '/' . $name;

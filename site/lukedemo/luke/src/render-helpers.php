@@ -124,7 +124,7 @@ function project_active_item_id(array $query = []): string {
     return trim((string)($data['id'] ?? ''));
 }
 
-// Pause Agent switch. The flag is its own file beside the board (not in board.json),
+// Pause Agent switch. The flag is its own file beside the board (not in luke.json),
 // so Undo and backup restores cannot flip it. A systemd path unit on this file
 // makes the watcher stop any run and stay quiet while paused.
 function project_agent_paused(): bool {

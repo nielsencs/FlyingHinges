@@ -37,7 +37,7 @@ function project_demo_root(): string {
 }
 
 function project_demo_data_path(): string {
-    return project_demo_root() . '/' . project_demo_sandbox_id() . '/board.json';
+    return project_demo_root() . '/' . project_demo_sandbox_id() . '/luke.json';
 }
 
 function project_demo_cookie_path(): string {
