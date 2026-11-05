@@ -33,7 +33,7 @@ function project_default_board(): array {
             [
                 'slug' => 'unassigned',
                 'name' => 'Unassigned',
-                'summary' => 'Inbox for new items with no Area chosen. Joel asks which Area it belongs to before treating it as any one project.',
+                'summary' => 'Inbox for new items with no Area chosen. {agent} asks which Area it belongs to before treating it as any one project.',
                 'updated_at' => $now,
             ],
         ],

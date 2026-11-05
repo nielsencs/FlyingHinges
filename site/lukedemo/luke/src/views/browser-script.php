@@ -1,6 +1,7 @@
 <?php
 $boardConfig = [
     'version' => $boardVersion,
+    'agentName' => project_agent_name(),
     'cancelUrl' => $cancelUrl,
     'sectionFilter' => $sectionFilter,
     'projectFilter' => $projectFilter,

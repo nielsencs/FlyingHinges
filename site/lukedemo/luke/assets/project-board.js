@@ -549,7 +549,7 @@ function boardUploadRecording(button) {
   }).catch(function(error) {
     boardQueueRecordingForLater(blob, form).then(function() {
       window.alert(error && error.rejected
-        ? 'The server did not receive this recording. It is saved on this device and will retry next time LUKE opens. Tell Joel.'
+        ? 'The server did not receive this recording. It is saved on this device and will retry next time LUKE opens. Tell ' + (boardConfig.agentName || 'the agent') + '.'
         : 'Recording saved on this device. It will upload automatically when the connection returns.');
       button.disabled = false;
       button.textContent = 'Record';

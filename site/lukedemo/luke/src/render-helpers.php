@@ -178,6 +178,10 @@ function project_agent_name(): string {
     return project_demo_mode() ? PROJECT_DEMO_AGENT_NAME : PROJECT_DEFAULT_AGENT_NAME;
 }
 
+function project_agent_text(string $text): string {
+    return str_replace('{agent}', project_agent_name(), $text);
+}
+
 function project_doing_led(array $todo, string $activeItemId): string {
     $itemId = trim((string)($todo['id'] ?? ''));
     $isActive = $itemId !== '' && $activeItemId !== '' && $itemId === $activeItemId;
@@ -454,8 +458,8 @@ function project_item_status_label(string $status): string {
 
 const PROJECT_STATUS_HELP = [
     'Open' => 'discuss / plan / check',
-    'Do' => 'Joel may act',
-    'Ready' => 'Joel has handed back; you decide next',
+    'Do' => '{agent} may act',
+    'Ready' => '{agent} has handed back; you decide next',
     'Done' => 'you accepted',
     'Blocked' => 'waiting on something',
 ];
@@ -468,9 +472,7 @@ const PROJECT_PRIORITY_HELP = [
 ];
 
 function project_status_help_for(string $status): string {
-    $help = PROJECT_STATUS_HELP[$status] ?? '';
-    // The public demo carries no personal names.
-    return function_exists('project_demo_mode') && project_demo_mode() ? str_replace('Joel', 'the agent', $help) : $help;
+    return project_agent_text(PROJECT_STATUS_HELP[$status] ?? '');
 }
 
 function project_status_help_text(): string {
