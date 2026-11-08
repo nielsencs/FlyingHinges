@@ -330,4 +330,6 @@ function project_save_board_locked(array $board, string $actor): void {
     }
     project_rename_into_place($tmp, $path);
     @chmod($path, $existingMode ?: 0660);
+    // A new change starts a new branch: what was undone before it can no longer be redone (LUKE #229).
+    project_clear_redo();
 }

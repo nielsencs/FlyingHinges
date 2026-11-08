@@ -177,6 +177,21 @@ function project_create_backup(string $actor = '', string $summary = '', string 
  * back up the current data (never pruning the source), then rename. Throws on a write failure.
  */
 function project_swap_in_backup(string $source, string $tag, string $summary): void {
+    $tmp = project_prepare_swap($source, $tag);
+    try {
+        if (is_file(project_data_path())) {
+            project_create_backup('', $summary, $source);
+        }
+    } catch (Throwable $e) {
+        @unlink($tmp);
+        throw $e;
+    }
+    project_rename_into_place($tmp, project_data_path());
+    @chmod(project_data_path(), 0660);
+}
+
+/** Write a backup's contents beside the data, keeping newer notes and the item counter. Returns the temp path. */
+function project_prepare_swap(string $source, string $tag): string {
     $raw = @file_get_contents($source);
     if ($raw === false || $raw === '') {
         throw new RuntimeException('LUKE could not read that backup');
@@ -199,16 +214,44 @@ function project_swap_in_backup(string $source, string $tag, string $summary): v
     }
     $tmp = project_write_temp($path, $raw, $tag);
     @chmod($tmp, 0660);
-    try {
-        if (is_file($path)) {
-            project_create_backup('', $summary, $source);
-        }
-    } catch (Throwable $e) {
-        @unlink($tmp);
-        throw $e;
+    return $tmp;
+}
+
+/*
+ * Undo and Redo (LUKE #229). Undo steps back through the backups: it puts the newest backup
+ * in place and moves the board it replaced onto the Redo list (it does not make a new backup,
+ * which is what used to make a second Undo flip back). Redo steps forward again and puts a
+ * backup back, so Undo can return to it. Any other save or a Restore clears the Redo list.
+ */
+function project_redo_dir(): string {
+    return project_data_path() . '.redo';
+}
+
+/** Newest first. */
+function project_redo_files(): array {
+    $files = glob(project_redo_dir() . '/*.json') ?: [];
+    rsort($files, SORT_STRING);
+    return $files;
+}
+
+function project_redo_available(): bool {
+    return project_redo_files() !== [];
+}
+
+function project_clear_redo(): void {
+    foreach (glob(project_redo_dir() . '/*') ?: [] as $file) {
+        @unlink($file);
     }
-    project_rename_into_place($tmp, $path);
-    @chmod($path, 0660);
+}
+
+function project_redo_prompt(): string {
+    $files = project_redo_files();
+    if (!$files) {
+        return 'Nothing to redo.';
+    }
+    $meta = project_backup_meta($files[0]);
+    $summary = $meta ? trim((string)($meta['summary'] ?? '')) : '';
+    return 'Redo the change you undid' . ($summary !== '' ? ': ' . $summary : '') . '?';
 }
 
 function project_restore_latest_backup(): bool {
@@ -218,12 +261,61 @@ function project_restore_latest_backup(): bool {
             return false;
         }
         $latest = $files[0];
-        if (!is_file($latest)) {
+        $path = project_data_path();
+        if (!is_file($latest) || !is_file($path)) {
             return false;
         }
-        project_swap_in_backup($latest, 'undo', 'undo');
+        $meta = project_backup_meta($latest) ?? ['actor' => project_note_stamp_user(), 'summary' => ''];
+        $tmp = project_prepare_swap($latest, 'undo');
+        // Keep the board being undone on the Redo list (checked), with the change it carries.
+        $dir = project_redo_dir();
+        // Named by when it was undone, so the most recent Undo is redone first.
+        $stamp = str_replace('.', '', sprintf('%.6F', microtime(true))) . '-' . getmypid();
+        $redo = $dir . '/redo-' . $stamp . '.json';
+        $redoMeta = project_backup_meta_path($redo);
+        try {
+            project_ensure_dir($dir);
+            $metaJson = json_encode(['actor' => (string)$meta['actor'], 'summary' => (string)($meta['summary'] ?? '')], JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
+            if (!@copy($path, $redo) || filesize($redo) !== filesize($path)
+                || !is_string($metaJson) || @file_put_contents($redoMeta, $metaJson) !== strlen($metaJson)) {
+                throw new RuntimeException('LUKE could not keep a Redo copy, so nothing was undone');
+            }
+            @chmod($redo, 0660);
+            @chmod($redoMeta, 0660);
+            project_rename_into_place($tmp, $path);
+        } catch (Throwable $e) {
+            @unlink($tmp);
+            @unlink($redo);
+            @unlink($redoMeta);
+            throw $e;
+        }
+        @chmod($path, 0660);
         @unlink($latest);
         @unlink(project_backup_meta_path($latest));
+        return true;
+    });
+}
+
+function project_redo_last_change(): bool {
+    return project_with_save_lock(function (): bool {
+        $files = project_redo_files();
+        if (!$files || !is_file(project_data_path())) {
+            return false;
+        }
+        $redo = $files[0];
+        $meta = project_backup_meta($redo) ?? ['actor' => '', 'summary' => ''];
+        $tmp = project_prepare_swap($redo, 'redo');
+        try {
+            // Back up the current board as the undo point for this change, as the original save did.
+            project_create_backup((string)$meta['actor'], (string)($meta['summary'] ?? ''));
+        } catch (Throwable $e) {
+            @unlink($tmp);
+            throw $e;
+        }
+        project_rename_into_place($tmp, project_data_path());
+        @chmod(project_data_path(), 0660);
+        @unlink($redo);
+        @unlink(project_backup_meta_path($redo));
         return true;
     });
 }
@@ -267,6 +359,7 @@ function project_restore_backup_by_name(string $name): bool {
             return false;
         }
         project_swap_in_backup($source, 'restore', 'restore from history');
+        project_clear_redo();
         return true;
     });
 }
