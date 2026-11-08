@@ -197,18 +197,18 @@ function project_prepare_swap(string $source, string $tag): string {
         throw new RuntimeException('LUKE could not read that backup');
     }
     $path = project_data_path();
-    // LUKE #226: notes written since the backup are kept (Notes only ever grow).
+    // LUKE #227: the item counter never goes back, so restored boards cannot reuse numbers.
     $backup = json_decode($raw, true);
     $current = is_file($path) ? json_decode((string)@file_get_contents($path), true) : null;
     if (is_array($backup) && is_array($current)) {
-        $merged = project_keep_newer_notes($backup, $current);
-        // LUKE #227: the item counter never goes back, so restored boards cannot reuse numbers.
+        $merged = $backup;
         $merged['next_id'] = max(project_next_item_id($backup), project_next_item_id($current));
         if ($merged !== $backup) {
             try {
-                $raw = json_encode($merged, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . "\n";
+                $raw = json_encode($merged, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . "
+";
             } catch (JsonException $e) {
-                throw new RuntimeException('LUKE could not merge newer notes into that backup', 0, $e);
+                throw new RuntimeException('LUKE could not keep the item counter for that backup', 0, $e);
             }
         }
     }
