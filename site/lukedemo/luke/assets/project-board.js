@@ -874,7 +874,7 @@ function boardSelectionIsAtEditorEnd(editor) {
   return tail.toString() === '';
 }
 function boardEnsureNoteStamp(editor) {
-  if (!editor || editor.dataset.noteStampAdded === '1') return;
+  if (!editor || editor.dataset.notesNew === '1' || editor.dataset.noteStampAdded === '1') return; // new-note editors: the server stamps
   const user = (editor.dataset.noteStampUser || '').trim() || 'User';
   const stamp = user + ' ' + boardNoteTimestamp();
   if (editor.dataset.notesMarkdown === '1') {

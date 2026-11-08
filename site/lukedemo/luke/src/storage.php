@@ -182,6 +182,19 @@ function project_swap_in_backup(string $source, string $tag, string $summary): v
         throw new RuntimeException('LUKE could not read that backup');
     }
     $path = project_data_path();
+    // LUKE #226: notes written since the backup are kept (Notes only ever grow).
+    $backup = json_decode($raw, true);
+    $current = is_file($path) ? json_decode((string)@file_get_contents($path), true) : null;
+    if (is_array($backup) && is_array($current)) {
+        $merged = project_keep_newer_notes($backup, $current);
+        if ($merged !== $backup) {
+            try {
+                $raw = json_encode($merged, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . "\n";
+            } catch (JsonException $e) {
+                throw new RuntimeException('LUKE could not merge newer notes into that backup', 0, $e);
+            }
+        }
+    }
     $tmp = project_write_temp($path, $raw, $tag);
     @chmod($tmp, 0660);
     try {

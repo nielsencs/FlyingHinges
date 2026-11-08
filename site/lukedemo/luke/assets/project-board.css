@@ -1051,3 +1051,12 @@ button.find-button,
 .status-help-body { position: fixed; z-index: 20; left: 50%; top: 50%; transform: translate(-50%, -50%); width: max-content; max-width: min(340px, 92vw); max-height: 80vh; overflow: auto; padding: 8px 10px; background: var(--panel, #fff); color: inherit; border: 1px solid var(--accent); border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,.25); }
 .status-help-body ul { margin: 2px 0 6px; padding-left: 18px; }
 .task-bottom-meta { grid-column: 1/-1; margin-top: 4px; }
+
+/* LUKE item 226: existing Notes are read-only; the editor below adds one new note. */
+.notes-history { margin-bottom: 8px; overflow-wrap: anywhere; }
+.notes-history details { margin: 4px 0; padding: 2px 6px; border-left: 3px solid var(--line); }
+.notes-history summary { cursor: pointer; font-weight: 600; }
+.notes-history ul, .notes-history ol { margin: 4px 0; padding-left: 1.6em; }
+.notes-history hr { border: 0; border-top: 1px solid var(--line); margin: 8px 0; }
+.notes-history code { font-family: ui-monospace, Menlo, Consolas, monospace; background: rgba(148, 163, 184, .2); padding: 0 3px; border-radius: 3px; }
+.notes-history h1, .notes-history h2 { font-size: 1.15em; margin: 6px 0 2px; }

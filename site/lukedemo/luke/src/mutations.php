@@ -16,29 +16,6 @@ function project_note_entry_has_stamp(string $entry): bool {
     return preg_match('/^[A-Z][A-Za-z]*(?: [A-Z][A-Za-z]*)* \d{4}-\d{2}-\d{2} \d{2}:\d{2}\b/', ltrim($entry)) === 1;
 }
 
-function project_stamp_appended_note_text(string $oldNotes, string $newNotes): string {
-    $old = project_normalise_notes_text($oldNotes);
-    $new = project_normalise_notes_text($newNotes);
-    if ($new === '' || $new === $old || $old === '') {
-        return $new;
-    }
-    if (!str_starts_with($new, $old)) {
-        return $new;
-    }
-    $appended = substr($new, strlen($old));
-    if ($appended === false || trim($appended) === '') {
-        return $new;
-    }
-    if (!preg_match('/^\s*\n/', $appended)) {
-        return $new;
-    }
-    $entry = trim($appended);
-    if (project_note_entry_has_stamp($entry)) {
-        return $new;
-    }
-    return rtrim($old) . "\n\n" . project_note_stamp_line() . "\n" . $entry;
-}
-
 function project_add_section(array $board, array $input): array {
     $name = project_field($input, 'name', 'New area');
     $base = project_slug($name);
@@ -283,26 +260,113 @@ function project_ready_handoff_guardrail(string $notes): string {
     return $prefix === '' ? ltrim($entry) : $prefix . $entry;
 }
 
-function project_merge_stale_notes(string $stored, string $incoming, string $baseHash): string {
-    // The edit form carries a hash of the notes it was loaded with. If the stored notes have
-    // moved on since (e.g. a Joel handoff), never let the older page overwrite them: keep the
-    // stored notes and append only what the user added after the shared leading paragraphs.
-    $stored = project_normalise_notes_text($stored);
-    $incoming = project_normalise_notes_text($incoming);
-    if ($baseHash === '' || hash_equals($baseHash, sha1($stored))) {
-        return $incoming;
-    }
-    if ($incoming === $stored || hash_equals($baseHash, sha1($incoming))) {
+/**
+ * LUKE #226: Notes only ever grow. The stored text is kept exactly as it is and each new note
+ * is added below it as its own entry, stamped by the server unless the writer typed their own
+ * "Name YYYY-MM-DD HH:MM" first line (allowed on purpose, see #216).
+ */
+function project_append_note(string $stored, string $newNote): string {
+    $entry = project_normalise_notes_text($newNote);
+    if ($entry === '') {
         return $stored;
     }
-    $a = explode("\n\n", $stored);
+    if (!project_note_entry_has_stamp($entry)) {
+        $entry = project_note_stamp_line() . "\n" . $entry;
+    }
+    $kept = rtrim($stored);
+    return $kept === '' ? $entry : $kept . "\n\n" . $entry;
+}
+
+/**
+ * The edit form sends only `new_note`. An older open page may still send the whole `notes`:
+ * that is used only when it is the stored text, unchanged, with something added at the end
+ * (or the item had no notes yet); anything else is ignored, so history is never rewritten.
+ */
+function project_add_note_from_input(string $stored, array $input): string {
+    if (array_key_exists('new_note', $input)) {
+        return project_append_note($stored, (string)$input['new_note']);
+    }
+    if (!array_key_exists('notes', $input)) {
+        return $stored;
+    }
+    $old = project_normalise_notes_text($stored);
+    $incoming = project_normalise_notes_text((string)$input['notes']);
+    if ($old === '') {
+        return project_append_note($stored, $incoming);
+    }
+    if ($incoming === $old) {
+        return $stored;
+    }
+    if (str_starts_with($incoming, $old . "\n")) {
+        return project_append_note($stored, substr($incoming, strlen($old)));
+    }
+    // A page opened before the notes last changed (it carries notes_base): add only what it wrote
+    // after the paragraphs both versions share. The stored text is never touched.
+    $baseHash = project_field($input, 'notes_base');
+    if ($baseHash === '' || hash_equals($baseHash, sha1($old)) || hash_equals($baseHash, sha1($incoming))) {
+        return $stored;
+    }
+    $a = explode("\n\n", $old);
     $b = explode("\n\n", $incoming);
     $k = 0;
     while ($k < count($a) && $k < count($b) && $a[$k] === $b[$k]) {
         $k++;
     }
-    $added = trim(implode("\n\n", array_slice($b, $k)));
-    return $added === '' ? $stored : project_stamp_appended_note_text($stored, $stored . "\n\n" . $added);
+    return project_append_note($stored, implode("\n\n", array_slice($b, $k)));
+}
+
+/** Content lines of Notes, ignoring blank lines and fold markup (folds and fold labels only wrap text). */
+function project_note_content_lines(string $notes): array {
+    $lines = [];
+    foreach (explode("\n", project_normalise_notes_text($notes)) as $line) {
+        $line = trim($line);
+        $line = trim(preg_replace('/^<\s*\/?\s*details\b[^>]*>|<\s*\/?\s*details\s*>$/i', '', $line) ?? $line);
+        if ($line === '' || preg_match('/^<\s*summary\b[^>]*>.*<\s*\/\s*summary\s*>$/i', $line)) {
+            continue;
+        }
+        $lines[] = $line;
+    }
+    return $lines;
+}
+
+/** True when every content line of $older appears in $newer, in order: $newer only added or folded. */
+function project_notes_only_grew(string $older, string $newer): bool {
+    $want = project_note_content_lines($older);
+    $have = project_note_content_lines($newer);
+    $j = 0;
+    foreach ($have as $line) {
+        if ($j < count($want) && $line === $want[$j]) {
+            $j++;
+        }
+    }
+    return $j === count($want);
+}
+
+/**
+ * Undo and Restore bring back a backup but never drop notes written since: for each item in both,
+ * the current Notes are kept when they hold all of the backup's Notes (only added or folded since).
+ * When the current Notes lost text the backup still had, the backup's Notes come back.
+ */
+function project_keep_newer_notes(array $backup, array $current): array {
+    $now = [];
+    foreach ($current['items'] ?? $current['todos'] ?? [] as $item) {
+        if (is_array($item) && isset($item['id'])) {
+            $now[(string)$item['id']] = (string)($item['notes'] ?? '');
+        }
+    }
+    foreach (['items', 'todos'] as $listKey) {
+        foreach ($backup[$listKey] ?? [] as $i => $item) {
+            $id = is_array($item) && isset($item['id']) ? (string)$item['id'] : '';
+            if ($id === '' || !isset($now[$id])) {
+                continue;
+            }
+            $old = (string)($item['notes'] ?? '');
+            if ($now[$id] !== $old && project_notes_only_grew($old, $now[$id])) {
+                $backup[$listKey][$i]['notes'] = $now[$id];
+            }
+        }
+    }
+    return $backup;
 }
 
 function project_update_item(array $board, array $input): array {
@@ -315,9 +379,7 @@ function project_update_item(array $board, array $input): array {
             $todo['project'] = $project;
             foreach (['priority', 'status', 'title', 'notes'] as $key) {
                 if ($key === 'notes') {
-                    $incomingNotes = project_field($input, $key, (string)($todo[$key] ?? ''));
-                    $incomingNotes = project_merge_stale_notes((string)($todo[$key] ?? ''), $incomingNotes, project_field($input, 'notes_base'));
-                    $todo[$key] = project_stamp_appended_note_text((string)($todo[$key] ?? ''), $incomingNotes);
+                    $todo['notes'] = project_add_note_from_input((string)($todo['notes'] ?? ''), $input);
                 } else {
                     $incoming = project_field($input, $key, (string)($todo[$key] ?? ''));
                     // Forms carry the value they loaded with; if the form did not change it,

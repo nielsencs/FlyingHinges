@@ -62,11 +62,14 @@ function project_render_formatted_notes(string $text): string {
 }
 
 function project_render_formatted_notes_editor(string $notes = '', bool $markdown = false): string {
-    $base = $notes === '' ? '' : '<input type="hidden" name="notes_base" value="' . h(sha1(project_normalise_notes_text($notes))) . '">';
+    // LUKE item 226: existing Notes are shown read-only; the editor below is only for a new note,
+    // which the server adds as its own stamped entry. The history is never sent back.
+    $history = $notes === '' ? '' : '<div class="notes-history" aria-label="Existing notes (read-only)">'
+        . ($markdown ? project_render_markdown_notes($notes) : project_render_formatted_notes($notes)) . '</div>';
+    $notesLabel = '<label>' . ($notes === '' ? 'Notes' : 'Add a note') . '</label>';
     if (!$markdown) {
-        return '<label>Notes</label><textarea name="notes" data-formatted-notes-storage hidden>' . h($notes) . '</textarea>' . $base
-            . '<div class="formatted-notes-editor" contenteditable="true" role="textbox" aria-multiline="true" data-formatted-notes-editor data-note-stamp="1" data-note-stamp-user="' . h(project_note_stamp_user()) . '">'
-            . project_render_formatted_notes($notes) . '</div>';
+        return $history . $notesLabel . '<textarea name="new_note" data-formatted-notes-storage hidden></textarea>'
+            . '<div class="formatted-notes-editor" contenteditable="true" role="textbox" aria-multiline="true" data-formatted-notes-editor data-notes-new="1"></div>';
     }
     $buttons = [
         'bold' => ['<strong>B</strong>', 'Bold'],
@@ -81,10 +84,9 @@ function project_render_formatted_notes_editor(string $notes = '', bool $markdow
         $bar .= '<button type="button" class="small notes-tool" data-notes-cmd="' . $cmd . '" title="' . h($title) . '" aria-label="' . h($title) . '"' . ($cmd === 'code' ? ' aria-pressed="false"' : '') . '>' . $label . '</button>';
     }
     $barBottom = '<div class="notes-toolbar notes-toolbar-bottom" role="toolbar" aria-label="Notes formatting (below)">' . $bar . '</div>';
-    return '<label>Notes</label><div class="notes-toolbar" role="toolbar" aria-label="Notes formatting">' . $bar . '</div>'
-        . '<textarea name="notes" data-formatted-notes-storage data-notes-code class="notes-code" hidden spellcheck="false">' . h($notes) . '</textarea>' . $base
-        . '<div class="formatted-notes-editor" contenteditable="true" role="textbox" aria-multiline="true" data-formatted-notes-editor data-notes-markdown="1" data-note-stamp="1" data-note-stamp-user="' . h(project_note_stamp_user()) . '">'
-        . project_render_markdown_notes($notes) . '</div>' . $barBottom;
+    return $history . $notesLabel . '<div class="notes-toolbar" role="toolbar" aria-label="Notes formatting">' . $bar . '</div>'
+        . '<textarea name="new_note" data-formatted-notes-storage data-notes-code class="notes-code" hidden spellcheck="false"></textarea>'
+        . '<div class="formatted-notes-editor" contenteditable="true" role="textbox" aria-multiline="true" data-formatted-notes-editor data-notes-markdown="1" data-notes-new="1"></div>' . $barBottom;
 }
 /** Shared by Add item and Edit item so both dialogs have the same layout: buttons, Title, Notes, buttons. */
 function project_render_item_title_notes_fields(string $title, string $notesHtml, string $buttons, string $titlePlaceholder = '', string $rowClass = '', bool $bottomButtons = true, string $bottomExtra = ''): string {
@@ -705,12 +707,9 @@ function project_item_update_hidden_inputs(array $todo, array $overrides = [], a
     $values['base_priority'] = (string)($todo['priority'] ?? '');
     $values['base_title'] = (string)($todo['title'] ?? '');
     $values['base_order'] = (string)((int)($todo['order'] ?? 1));
-    if ($withNotes) {
-        $values['notes_base'] = sha1(project_normalise_notes_text((string)($todo['notes'] ?? '')));
-    } else {
-        // Summary dropdown forms leave Notes out (LUKE item 206): the save keeps the stored Notes.
-        unset($values['notes'], $values['notes_base']);
-    }
+    // Hidden-field forms never carry Notes (LUKE items 206, 226): the save keeps the stored Notes
+    // and only a typed new note is ever added. $withNotes is kept for old callers.
+    unset($values['notes']);
 
     $html = '';
     foreach ($values as $name => $value) {
