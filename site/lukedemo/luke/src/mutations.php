@@ -149,12 +149,24 @@ function project_delete_project(array $board, array $input): array {
     return project_normalise_board($board);
 }
 
-function project_next_item_id(array $board): int {
+function project_highest_item_id(array $board): int {
     $max = 0;
-    foreach ($board['items'] ?? [] as $todo) {
+    foreach ($board['items'] ?? $board['todos'] ?? [] as $todo) {
         $max = max($max, (int)($todo['id'] ?? 0));
     }
-    return $max + 1;
+    return $max;
+}
+
+// LUKE #227: numbers are never reused. next_id only goes up, so a hard delete,
+// the Bin purge, Undo or Restore can never hand an old number out again.
+function project_next_item_id(array $board): int {
+    return max(project_highest_item_id($board) + 1, (int)($board['next_id'] ?? 1));
+}
+
+function project_take_item_id(array &$board): int {
+    $id = project_next_item_id($board);
+    $board['next_id'] = $id + 1;
+    return $id;
 }
 
 function project_project_section(array $board, string $projectSlug): string {
@@ -194,8 +206,9 @@ function project_stamp_new_notes(string $notes): string {
 function project_add_item(array $board, array $input): array {
     [$section, $project] = project_item_scope($board, $input);
     $now = project_now();
+    $newId = project_take_item_id($board);
     $board['items'][] = [
-        'id' => project_next_item_id($board),
+        'id' => $newId,
         'section' => $section,
         'project' => $project,
         'priority' => project_field($input, 'priority', ''),
@@ -225,8 +238,9 @@ function project_duplicate_item(array $board, array $input): array {
             }
         }
         unset($other);
+        $newId = project_take_item_id($board);
         $board['items'][] = [
-            'id' => project_next_item_id($board),
+            'id' => $newId,
             'section' => $section,
             'project' => $project,
             'priority' => (string)($todo['priority'] ?? ''),
@@ -374,9 +388,16 @@ function project_update_item(array $board, array $input): array {
     foreach ($board['items'] as &$todo) {
         if ((int)($todo['id'] ?? 0) === $id) {
             $previousStatus = (string)($todo['status'] ?? '');
-            [$section, $project] = project_item_scope($board, $input, $todo);
-            $todo['section'] = $section;
-            $todo['project'] = $project;
+            // Area and Focus are guarded as a pair (LUKE #228): an old form that left both as loaded
+            // keeps the stored scope, so a move made since is not undone by an unrelated edit.
+            $scopeUnchanged = array_key_exists('base_section', $input) && array_key_exists('base_project', $input)
+                && project_field($input, 'base_section') === project_field($input, 'section', (string)($todo['section'] ?? ''))
+                && project_field($input, 'base_project') === project_field($input, 'project', (string)($todo['project'] ?? ''));
+            if (!$scopeUnchanged) {
+                [$section, $project] = project_item_scope($board, $input, $todo);
+                $todo['section'] = $section;
+                $todo['project'] = $project;
+            }
             foreach (['priority', 'status', 'title', 'notes'] as $key) {
                 if ($key === 'notes') {
                     $todo['notes'] = project_add_note_from_input((string)($todo['notes'] ?? ''), $input);
@@ -751,8 +772,9 @@ function project_record_audio_item(array $board, array $input, ?array $stored = 
         }
     }
     unset($todo);
+    $newId = project_take_item_id($board);
     $board['items'][] = [
-        'id' => project_next_item_id($board),
+        'id' => $newId,
         'section' => 'the-umbrella',
         'project' => 'communication',
         'priority' => '',

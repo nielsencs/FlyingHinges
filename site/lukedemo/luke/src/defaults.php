@@ -115,6 +115,7 @@ function project_normalise_board(array $board): array {
     $board['items'] = array_values($items);
     // Keep a mirrored legacy key for old scripts/forms while items is the primary app key.
     $board['todos'] = $board['items'];
+    $board['next_id'] = project_next_item_id($board);
     $board['updated_at'] = $board['updated_at'] ?? project_now();
 
     if (!$board['sections']) {
@@ -297,6 +298,8 @@ function project_save_board_locked(array $board, string $actor): void {
     $previous = is_file($path) ? json_decode((string)@file_get_contents($path), true) : null;
     $previousItems = is_array($previous) ? ($previous['items'] ?? $previous['todos'] ?? []) : [];
     $summary = project_change_summary($previousItems, $board['items'] ?? []);
+    // A save from an older copy can never lower the item counter (LUKE #227).
+    $board['next_id'] = max(project_next_item_id($board), is_array($previous) ? project_next_item_id($previous) : 1);
     $board = project_purge_expired_binned_items($board);
     foreach (['items', 'todos'] as $listKey) {
         foreach ($board[$listKey] ?? [] as $i => $item) {

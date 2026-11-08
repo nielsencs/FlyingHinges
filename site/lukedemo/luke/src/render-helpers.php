@@ -707,6 +707,8 @@ function project_item_update_hidden_inputs(array $todo, array $overrides = [], a
     $values['base_priority'] = (string)($todo['priority'] ?? '');
     $values['base_title'] = (string)($todo['title'] ?? '');
     $values['base_order'] = (string)((int)($todo['order'] ?? 1));
+    $values['base_section'] = (string)($todo['section'] ?? '');
+    $values['base_project'] = (string)($todo['project'] ?? '');
     // Hidden-field forms never carry Notes (LUKE items 206, 226): the save keeps the stored Notes
     // and only a typed new note is ever added. $withNotes is kept for old callers.
     unset($values['notes']);

@@ -187,6 +187,8 @@ function project_swap_in_backup(string $source, string $tag, string $summary): v
     $current = is_file($path) ? json_decode((string)@file_get_contents($path), true) : null;
     if (is_array($backup) && is_array($current)) {
         $merged = project_keep_newer_notes($backup, $current);
+        // LUKE #227: the item counter never goes back, so restored boards cannot reuse numbers.
+        $merged['next_id'] = max(project_next_item_id($backup), project_next_item_id($current));
         if ($merged !== $backup) {
             try {
                 $raw = json_encode($merged, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . "\n";
