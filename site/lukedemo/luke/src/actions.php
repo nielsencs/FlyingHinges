@@ -1,5 +1,5 @@
 <?php
-function project_apply_action(array $board, array $post, array $files = []): array {
+function project_apply_action(array $board, array $post, array $files = [], array $prepared = []): array {
     return match (project_field($post, 'action')) {
         'save_settings' => project_save_settings($board, $post),
         'add_section' => project_add_section($board, $post),
@@ -17,8 +17,8 @@ function project_apply_action(array $board, array $post, array $files = []): arr
         'update_todo' => project_update_item($board, $post),
         'move_todo_scope' => project_move_item_scope($board, $post),
         'clear_todo_changed' => project_clear_item_changed($board, $post),
-        'record_audio' => project_record_audio_item($board, $files + $post),
-        'improve_item_transcript' => project_improve_item_transcript($board, $post),
+        'record_audio' => project_record_audio_item($board, $files + $post, $prepared['audio'] ?? null),
+        'improve_item_transcript' => project_improve_item_transcript($board, $post, $prepared['transcript'] ?? null),
         'use_improved_item_transcript' => project_use_improved_item_transcript($board, $post),
         'delete_item' => project_delete_item($board, $post),
         'delete_item_audio' => project_delete_item_audio($board, $post),
@@ -160,4 +160,30 @@ function project_redirect_after_action(array $board, array $post): string {
 function project_apply_agent_pause(array $board, array $post): array {
     project_set_agent_pause(project_field($post, 'paused') === '1');
     return $board;
+}
+
+/**
+ * Slow work done before the save lock (storing and transcribing audio), so a voice note
+ * never keeps the agent door or another tab waiting.
+ */
+function project_prepare_action(array $board, array $post, array $files): array {
+    return match (project_field($post, 'action')) {
+        'record_audio' => ['audio' => project_record_audio_store($files + $post)],
+        'improve_item_transcript' => ['transcript' => project_improve_item_transcript_text($board, $post)],
+        default => [],
+    };
+}
+
+/** A save that did not happen says so, with a real error, instead of a success redirect. */
+function project_save_failed_response(Throwable $e): void {
+    error_log('LUKE save failed: ' . $e->getMessage());
+    http_response_code(500);
+    header('Content-Type: text/html; charset=utf-8');
+    header('Cache-Control: no-store');
+    $reason = $e instanceof RuntimeException ? $e->getMessage() : 'unexpected error';
+    echo '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">'
+        . '<title>Not saved</title><body style="font-family:sans-serif;max-width:40em;margin:2em auto;padding:0 1em">'
+        . '<h1>Not saved</h1><p>Your change was not saved: ' . htmlspecialchars($reason, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '.</p>'
+        . '<p>LUKE is unchanged. Go back to keep your edit, then try again.</p>'
+        . '<p><a href="./">Back to LUKE</a></p></body>';
 }

@@ -84,59 +84,133 @@ function project_change_summary(array $oldItems, array $newItems): string {
     return $count . ' items';
 }
 
-function project_create_backup(string $actor = '', string $summary = ''): bool {
+const PROJECT_MAX_BACKUPS = 50;
+
+/**
+ * The one save lock. Every change to LUKE data (browser save, Undo, Restore, agent door)
+ * runs inside it, so two writers never interleave. Re-entrant within one request.
+ */
+function project_with_save_lock(callable $fn) {
+    static $depth = 0;
+    if ($depth > 0) {
+        $depth++;
+        try { return $fn(); } finally { $depth--; }
+    }
+    project_ensure_dir(dirname(project_data_path()));
+    $handle = @fopen(project_data_path() . '.lock', 'c');
+    if ($handle === false || !flock($handle, LOCK_EX)) {
+        if ($handle !== false) { fclose($handle); }
+        throw new RuntimeException('LUKE could not take its save lock');
+    }
+    $depth = 1;
+    try {
+        return $fn();
+    } finally {
+        $depth = 0;
+        flock($handle, LOCK_UN);
+        fclose($handle);
+    }
+}
+
+function project_ensure_dir(string $dir): void {
+    if (!is_dir($dir) && !@mkdir($dir, 0770, true) && !is_dir($dir)) {
+        throw new RuntimeException('LUKE could not create its data folder');
+    }
+}
+
+/** Write a whole file beside $path, checked. Returns the temp path; the caller renames it into place. */
+function project_write_temp(string $path, string $bytes, string $tag = 'tmp'): string {
+    project_ensure_dir(dirname($path));
+    $tmp = $path . '.' . $tag . '.' . getmypid();
+    if (@file_put_contents($tmp, $bytes, LOCK_EX) !== strlen($bytes)) {
+        @unlink($tmp);
+        throw new RuntimeException('LUKE could not write its data (disk full or folder read-only?)');
+    }
+    return $tmp;
+}
+
+function project_rename_into_place(string $tmp, string $path): void {
+    if (!@rename($tmp, $path)) {
+        @unlink($tmp);
+        throw new RuntimeException('LUKE could not put the new data in place');
+    }
+}
+
+/** Backs up the current data file. Throws when the backup cannot be written. $keep is never pruned. */
+function project_create_backup(string $actor = '', string $summary = '', string $keep = ''): bool {
     $path = project_data_path();
     if (!is_file($path) || filesize($path) === 0) {
         return false;
     }
     $dir = project_backup_dir();
-    if (!is_dir($dir)) {
-        mkdir($dir, 0770, true);
-    }
+    project_ensure_dir($dir);
     $stamp = gmdate('Ymd-His') . '-' . str_replace('.', '', sprintf('%.6F', microtime(true))) . '-' . getmypid();
     $backup = $dir . '/luke-' . $stamp . '.json';
-    if (!copy($path, $backup)) {
-        return false;
+    if (!@copy($path, $backup) || filesize($backup) !== filesize($path)) {
+        @unlink($backup);
+        throw new RuntimeException('LUKE could not write a backup, so nothing was saved');
     }
     @chmod($backup, 0660);
     $meta = project_backup_meta_path($backup);
-    file_put_contents($meta, json_encode(['actor' => $actor !== '' ? $actor : project_note_stamp_user(), 'summary' => $summary], JSON_UNESCAPED_SLASHES));
+    $metaJson = json_encode(['actor' => $actor !== '' ? $actor : project_note_stamp_user(), 'summary' => $summary], JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
+    if (!is_string($metaJson) || @file_put_contents($meta, $metaJson) !== strlen($metaJson)) {
+        @unlink($backup);
+        @unlink($meta);
+        throw new RuntimeException('LUKE could not write a backup, so nothing was saved');
+    }
     @chmod($meta, 0660);
     $files = project_backup_files();
-    foreach (array_slice($files, 50) as $old) {
+    $limit = PROJECT_MAX_BACKUPS;
+    if ($keep !== '' && in_array($keep, $files, true)) {
+        $files = array_values(array_filter($files, fn($f) => $f !== $keep));
+        $limit--;
+    }
+    foreach (array_slice($files, $limit) as $old) {
         @unlink($old);
         @unlink(project_backup_meta_path($old));
     }
     return true;
 }
 
-function project_restore_latest_backup(): bool {
-    $files = project_backup_files();
-    if (!$files || !project_undo_allowed()) {
-        return false;
+/**
+ * Put a backup in place of the current data: copy it beside the data first (checked),
+ * back up the current data (never pruning the source), then rename. Throws on a write failure.
+ */
+function project_swap_in_backup(string $source, string $tag, string $summary): void {
+    $raw = @file_get_contents($source);
+    if ($raw === false || $raw === '') {
+        throw new RuntimeException('LUKE could not read that backup');
     }
     $path = project_data_path();
-    $dir = dirname($path);
-    if (!is_dir($dir)) {
-        mkdir($dir, 0770, true);
-    }
-    $latest = $files[0];
-    if (!is_file($latest)) {
-        return false;
-    }
-    if (is_file($path)) {
-        project_create_backup('', 'undo');
-    }
-    $tmp = $path . '.undo.' . getmypid();
-    if (!copy($latest, $tmp)) {
-        return false;
-    }
+    $tmp = project_write_temp($path, $raw, $tag);
     @chmod($tmp, 0660);
-    rename($tmp, $path);
+    try {
+        if (is_file($path)) {
+            project_create_backup('', $summary, $source);
+        }
+    } catch (Throwable $e) {
+        @unlink($tmp);
+        throw $e;
+    }
+    project_rename_into_place($tmp, $path);
     @chmod($path, 0660);
-    @unlink($latest);
-    @unlink(project_backup_meta_path($latest));
-    return true;
+}
+
+function project_restore_latest_backup(): bool {
+    return project_with_save_lock(function (): bool {
+        $files = project_backup_files();
+        if (!$files || !project_undo_allowed()) {
+            return false;
+        }
+        $latest = $files[0];
+        if (!is_file($latest)) {
+            return false;
+        }
+        project_swap_in_backup($latest, 'undo', 'undo');
+        @unlink($latest);
+        @unlink(project_backup_meta_path($latest));
+        return true;
+    });
 }
 
 
@@ -173,22 +247,13 @@ function project_restore_backup_by_name(string $name): bool {
     if (!is_array($data) || !isset($data['items']) || !is_array($data['items'])) {
         return false;
     }
-    $path = project_data_path();
-    $dir = dirname($path);
-    if (!is_dir($dir)) {
-        mkdir($dir, 0770, true);
-    }
-    if (is_file($path)) {
-        project_create_backup('', 'restore from history');
-    }
-    $tmp = $path . '.restore.' . getmypid();
-    if (!copy($source, $tmp)) {
-        return false;
-    }
-    @chmod($tmp, 0660);
-    rename($tmp, $path);
-    @chmod($path, 0660);
-    return true;
+    return project_with_save_lock(function () use ($source): bool {
+        if (!is_file($source)) {
+            return false;
+        }
+        project_swap_in_backup($source, 'restore', 'restore from history');
+        return true;
+    });
 }
 
 
@@ -359,11 +424,15 @@ function project_note_images_externalise(string $notes): string {
         $path = project_note_image_dir() . '/' . $name;
         if (!is_file($path)) {
             $tmp = $path . '.tmp.' . getmypid();
-            if (file_put_contents($tmp, $bytes) === false) {
+            if (@file_put_contents($tmp, $bytes) !== strlen($bytes)) {
+                @unlink($tmp);
                 return $tag;
             }
             @chmod($tmp, 0660);
-            rename($tmp, $path);
+            if (!@rename($tmp, $path)) {
+                @unlink($tmp);
+                return $tag;
+            }
         }
         $alt = 'Pasted image';
         if (preg_match('/\balt\s*=\s*(["\'])(.*?)\1/is', $tag, $altMatch) && trim($altMatch[2]) !== '') {

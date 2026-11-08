@@ -144,15 +144,10 @@ function project_set_agent_pause(bool $paused): void {
         return;
     }
     $path = project_pause_path();
-    $dir = dirname($path);
-    if (!is_dir($dir)) {
-        mkdir($dir, 0770, true);
-    }
     $payload = json_encode(['paused' => $paused, 'changed_at' => gmdate('c')], JSON_UNESCAPED_SLASHES) . "\n";
-    $tmp = tempnam($dir, '.pause.');
-    file_put_contents($tmp, $payload);
-    chmod($tmp, 0664);
-    rename($tmp, $path);
+    $tmp = project_write_temp($path, $payload, 'pause');
+    @chmod($tmp, 0664);
+    project_rename_into_place($tmp, $path);
 }
 
 function project_agent_pause_switch_html(array $returnContext = []): string {

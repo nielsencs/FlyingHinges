@@ -55,36 +55,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         echo 'Voice note did not arrive (' . ($droppedBody ? 'too_large' : $audioProblem) . ')';
         exit;
     }
-    if (project_field($_POST, 'action') === 'undo_last_change') {
-        project_restore_latest_backup();
-        header('Location: ' . project_redirect_after_action($board, $_POST), true, 303);
-        exit;
-    }
-    if (project_field($_POST, 'action') === 'restore_backup') {
-        if (!project_demo_mode()) {
-            project_restore_backup_by_name(project_field($_POST, 'backup'));
+    // Every write below runs inside the one save lock (the same one the agent door uses)
+    // and any failed write shows a real error instead of a success redirect.
+    try {
+        if (project_field($_POST, 'action') === 'undo_last_change') {
+            project_restore_latest_backup();
+            header('Location: ' . project_redirect_after_action($board, $_POST), true, 303);
+            exit;
         }
-        header('Location: ' . project_redirect_after_action($board, $_POST), true, 303);
+        if (project_field($_POST, 'action') === 'restore_backup') {
+            if (!project_demo_mode()) {
+                project_restore_backup_by_name(project_field($_POST, 'backup'));
+            }
+            header('Location: ' . project_redirect_after_action($board, $_POST), true, 303);
+            exit;
+        }
+        if (project_demo_handle_reset(project_field($_POST, 'action'))) {
+            header('Location: ./', true, 303);
+            exit;
+        }
+        if (project_demo_mode() && in_array(project_field($_POST, 'action'), project_demo_blocked_actions(), true)) {
+            header('Location: ./', true, 303);
+            exit;
+        }
+        if (project_field($_POST, 'action') === 'set_agent_pause') {
+            project_set_agent_pause(project_field($_POST, 'paused') === '1');
+            header('Location: ' . project_redirect_after_action($board, $_POST), true, 303);
+            exit;
+        }
+        $prepared = project_prepare_action($board, $_POST, $_FILES);
+        [$board, $redirect] = project_with_save_lock(function () use ($prepared): array {
+            // Re-read under the lock, so a change saved meanwhile (e.g. an agent handoff) is kept.
+            $board = project_load_board();
+            $redirect = project_field($_POST, 'action') === 'delete_todo' ? project_redirect_after_action($board, $_POST) : '';
+            $boardBefore = $board;
+            $board = project_apply_action($board, $_POST, $_FILES, $prepared);
+            project_demo_agent_after_action($boardBefore, $board, $_POST);
+            project_save_board($board);
+            return [$board, $redirect];
+        });
+    } catch (Throwable $e) {
+        project_save_failed_response($e);
         exit;
     }
-    if (project_demo_handle_reset(project_field($_POST, 'action'))) {
-        header('Location: ./', true, 303);
-        exit;
-    }
-    if (project_demo_mode() && in_array(project_field($_POST, 'action'), project_demo_blocked_actions(), true)) {
-        header('Location: ./', true, 303);
-        exit;
-    }
-    if (project_field($_POST, 'action') === 'set_agent_pause') {
-        project_set_agent_pause(project_field($_POST, 'paused') === '1');
-        header('Location: ' . project_redirect_after_action($board, $_POST), true, 303);
-        exit;
-    }
-    $redirect = project_field($_POST, 'action') === 'delete_todo' ? project_redirect_after_action($board, $_POST) : '';
-    $boardBefore = $board;
-    $board = project_apply_action($board, $_POST, $_FILES);
-    project_demo_agent_after_action($boardBefore, $board, $_POST);
-    project_save_board($board);
     if ($redirect === '') {
         $redirect = project_redirect_after_action($board, $_POST);
     }

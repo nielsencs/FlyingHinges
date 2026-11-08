@@ -279,18 +279,24 @@ function project_browser_version(array $board, array $query = []): string {
     ], JSON_UNESCAPED_SLASHES));
 }
 
+/**
+ * Save inside the one save lock: encode first (stop on any error), write a checked temp file,
+ * back up the current data (checked), then rename into place (checked). Throws on any failure,
+ * leaving the data file as it was.
+ */
 function project_save_board(array $board, string $actor = ''): void {
+    project_with_save_lock(fn() => project_save_board_locked($board, $actor));
+}
+
+function project_save_board_locked(array $board, string $actor): void {
     $path = project_data_path();
-    $dir = dirname($path);
-    if (!is_dir($dir)) {
-        mkdir($dir, 0770, true);
-    }
+    project_ensure_dir(dirname($path));
     $existingMode = is_file($path) ? (@fileperms($path) & 0777) : 0660;
     $existingOwner = is_file($path) ? @fileowner($path) : false;
     $existingGroup = is_file($path) ? @filegroup($path) : false;
     $previous = is_file($path) ? json_decode((string)@file_get_contents($path), true) : null;
     $previousItems = is_array($previous) ? ($previous['items'] ?? $previous['todos'] ?? []) : [];
-    project_create_backup($actor, project_change_summary($previousItems, $board['items'] ?? []));
+    $summary = project_change_summary($previousItems, $board['items'] ?? []);
     $board = project_purge_expired_binned_items($board);
     foreach (['items', 'todos'] as $listKey) {
         foreach ($board[$listKey] ?? [] as $i => $item) {
@@ -300,8 +306,12 @@ function project_save_board(array $board, string $actor = ''): void {
         }
     }
     $board['updated_at'] = project_now();
-    $tmp = $path . '.tmp.' . getmypid();
-    file_put_contents($tmp, json_encode(project_normalise_board($board), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n", LOCK_EX);
+    try {
+        $json = json_encode(project_normalise_board($board), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . "\n";
+    } catch (JsonException $e) {
+        throw new RuntimeException('a title or note holds text LUKE cannot store (' . $e->getMessage() . ')', 0, $e);
+    }
+    $tmp = project_write_temp($path, $json);
     @chmod($tmp, $existingMode ?: 0660);
     if ($existingOwner !== false) {
         @chown($tmp, $existingOwner);
@@ -309,6 +319,12 @@ function project_save_board(array $board, string $actor = ''): void {
     if ($existingGroup !== false) {
         @chgrp($tmp, $existingGroup);
     }
-    rename($tmp, $path);
+    try {
+        project_create_backup($actor, $summary);
+    } catch (Throwable $e) {
+        @unlink($tmp);
+        throw $e;
+    }
+    project_rename_into_place($tmp, $path);
     @chmod($path, $existingMode ?: 0660);
 }

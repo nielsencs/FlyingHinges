@@ -535,7 +535,18 @@ function project_transcribe_audio(string $path, string $profile = 'fast'): strin
     return $code === 0 && $text !== '' ? $text : 'Transcript unavailable';
 }
 
-function project_improve_item_transcript(array $board, array $input): array {
+/** The slow part of Improve transcript, run before the save lock is taken. Null when there is nothing to improve. */
+function project_improve_item_transcript_text(array $board, array $input): ?string {
+    $id = (int)($input['id'] ?? 0);
+    foreach ($board['items'] as $todo) {
+        if ((int)($todo['id'] ?? 0) === $id && !project_item_is_binned($todo) && is_array($todo['audio'] ?? null) && trim((string)($todo['audio']['file'] ?? '')) !== '') {
+            return project_transcribe_audio(project_audio_path((string)$todo['audio']['file']), 'accurate');
+        }
+    }
+    return null;
+}
+
+function project_improve_item_transcript(array $board, array $input, ?string $transcript = null): array {
     $id = (int)($input['id'] ?? 0);
     foreach ($board['items'] as &$todo) {
         if ((int)($todo['id'] ?? 0) !== $id || project_item_is_binned($todo)) {
@@ -545,7 +556,7 @@ function project_improve_item_transcript(array $board, array $input): array {
         if (!is_array($audio) || trim((string)($audio['file'] ?? '')) === '') {
             break;
         }
-        $transcript = project_transcribe_audio(project_audio_path((string)$audio['file']), 'accurate');
+        $transcript = $transcript ?? project_transcribe_audio(project_audio_path((string)$audio['file']), 'accurate');
         $now = project_now();
         $todo['audio']['improved_transcript'] = $transcript;
         $todo['audio']['improved_transcript_at'] = $now;
@@ -604,18 +615,22 @@ function project_post_body_dropped(array $post, array $files, string $contentLen
     return !$post && !$files && (int)$contentLength > 0;
 }
 
-function project_record_audio_item(array $board, array $input): array {
+/**
+ * Store an uploaded voice note and transcribe it. Slow (transcription), so the browser path
+ * runs this before taking the save lock. Null when there is no usable upload.
+ */
+function project_record_audio_store(array $input): ?array {
     $upload = $input['audio'] ?? null;
     if (!is_array($upload) || (int)($upload['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
-        return $board;
+        return null;
     }
     $tmp = (string)($upload['tmp_name'] ?? '');
     if ($tmp === '' || !is_file($tmp)) {
-        return $board;
+        return null;
     }
     $mime = (string)($upload['type'] ?? 'audio/webm');
     if (!str_starts_with($mime, 'audio/')) {
-        return $board;
+        return null;
     }
     $ext = match ($mime) {
         'audio/ogg', 'audio/oga' => 'ogg',
@@ -628,10 +643,19 @@ function project_record_audio_item(array $board, array $input): array {
     $dest = project_audio_path($name);
     $moved = is_uploaded_file($tmp) ? move_uploaded_file($tmp, $dest) : rename($tmp, $dest);
     if (!$moved) {
-        return $board;
+        return null;
     }
     @chmod($dest, 0660);
     $transcript = project_transcribe_audio($dest);
+    return ['name' => $name, 'dest' => $dest, 'mime' => $mime, 'transcript' => $transcript];
+}
+
+function project_record_audio_item(array $board, array $input, ?array $stored = null): array {
+    $stored = $stored ?? project_record_audio_store($input);
+    if ($stored === null) {
+        return $board;
+    }
+    ['name' => $name, 'dest' => $dest, 'mime' => $mime, 'transcript' => $transcript] = $stored;
     $now = project_now();
     $targetId = (int)($input['item_id'] ?? 0);
     if ($targetId > 0) {

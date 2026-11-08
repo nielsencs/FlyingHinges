@@ -76,18 +76,9 @@ function agent_door_reply(int $code, array $body): void {
     exit;
 }
 
+// The agent door uses the same one save lock as browser saves, Undo and Restore.
 function agent_door_locked(callable $fn) {
-    $handle = fopen(project_data_path() . '.lock', 'c');
-    if ($handle === false) {
-        throw new AgentDoorError('LUKE could not take its save lock', 500);
-    }
-    flock($handle, LOCK_EX);
-    try {
-        return $fn();
-    } finally {
-        flock($handle, LOCK_UN);
-        fclose($handle);
-    }
+    return project_with_save_lock($fn);
 }
 
 // ---- Fold helpers (Notes <details> blocks). Wrap only: no note text is changed or removed.
@@ -336,10 +327,10 @@ function agent_door_write_light(array $item): void {
         'id' => $item['id'], 'title' => (string)($item['title'] ?? ''), 'priority' => (string)($item['priority'] ?? ''),
         'status' => (string)($item['status'] ?? ''), 'active_at' => (new DateTime('now', new DateTimeZone('Europe/London')))->format('c'),
     ];
-    $tmp = tempnam(dirname($path), '.activity.');
-    file_put_contents($tmp, json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . "\n");
-    chmod($tmp, 0664);
-    rename($tmp, $path);
+    $json = json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE | JSON_THROW_ON_ERROR) . "\n";
+    $tmp = project_write_temp($path, $json, 'activity');
+    @chmod($tmp, 0664);
+    project_rename_into_place($tmp, $path);
 }
 
 // Light off. With an id, only if that item is the lit one (a handoff must not dim another item's light).
