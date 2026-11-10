@@ -212,8 +212,15 @@ function project_render_markdown_list(array $lines): string {
         $prevKind = $kind;
         $prevIndent = $indent;
     }
+    if (!$items) return '';
+    // A block that starts indented and then steps out must not drop its later items.
     $pos = 0;
-    return project_render_markdown_list_level($items, $pos, $items ? $items[0]['indent'] : 0);
+    $html = '';
+    $n = count($items);
+    while ($pos < $n) {
+        $html .= project_render_markdown_list_level($items, $pos, $items[$pos]['indent']);
+    }
+    return $html;
 }
 
 function project_render_markdown_list_level(array $items, int &$pos, int $indent): string {

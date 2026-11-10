@@ -1363,17 +1363,26 @@ function boardNoteMdList(list, depth) {
   const pad = '  '.repeat(depth);
   list.childNodes.forEach(function(li) {
     if (li.nodeType !== Node.ELEMENT_NODE || li.tagName.toLowerCase() !== 'li') return;
-    const own = {childNodes: []};
-    const nested = [];
-    li.childNodes.forEach(function(k) {
-      if (k.nodeType === Node.ELEMENT_NODE && ['ul', 'ol'].includes(k.tagName.toLowerCase())) nested.push(k);
-      else own.childNodes.push(k);
-    });
     let marker = '- ';
     if (tag === 'ol') marker = (alpha ? String.fromCharCode(96 + ((n - 1) % 26) + 1) + ') ' : n + '. ');
     n++;
-    lines.push(pad + marker + boardNoteMdInline(own).replace(/\n+$/, '').replace(/\n/g, ' '));
-    nested.forEach(function(sub) { boardNoteMdList(sub, depth + 1).forEach(function(l) { lines.push(l); }); });
+    // Text and sub-lists stay in document order; text after a sub-list is an indented continuation line.
+    const cont = '  '.repeat(depth + 1);
+    let own = {childNodes: []};
+    let first = true;
+    const flushOwn = function() {
+      const textLine = boardNoteMdInline(own).replace(/\n+$/, '').replace(/\n/g, ' ');
+      own = {childNodes: []};
+      if (first) { lines.push(pad + marker + textLine); first = false; }
+      else if (textLine.trim() !== '') lines.push(cont + boardNoteMdFixLines(textLine.trim()));
+    };
+    li.childNodes.forEach(function(k) {
+      if (k.nodeType === Node.ELEMENT_NODE && ['ul', 'ol'].includes(k.tagName.toLowerCase())) {
+        flushOwn();
+        boardNoteMdList(k, depth + 1).forEach(function(l) { lines.push(l); });
+      } else own.childNodes.push(k);
+    });
+    flushOwn();
   });
   return lines;
 }
