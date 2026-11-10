@@ -7,7 +7,8 @@ function project_normalise_notes_text(string $notes): string {
     $notes = str_replace(["\r\n", "\r"], "\n", $notes);
     $notes = preg_replace('/<br\s*\/?>[ \t]*\n?/i', "\n", $notes) ?? $notes;
     $notes = preg_replace('/[ \t]+\n/', "\n", $notes) ?? $notes;
-    $notes = preg_replace('/\n[ \t]+/', "\n", $notes) ?? $notes;
+    // Drop stray leading spaces, but keep the indent of nested list lines ("  - sub", "   1. deep", "  a) x").
+    $notes = preg_replace('/\n[ \t]++(?!(?:[-*+]|\d+[.)]|[a-z]\))[ \t])/', "\n", $notes) ?? $notes;
     $notes = preg_replace('/\n{3,}/', "\n\n", $notes) ?? $notes;
     return trim($notes);
 }

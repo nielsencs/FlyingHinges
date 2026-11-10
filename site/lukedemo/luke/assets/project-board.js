@@ -813,8 +813,15 @@ function boardNodeKeepsNewlines(node) {
   const style = (node.getAttribute && node.getAttribute('style')) || '';
   return /white-space\s*:\s*(pre|pre-wrap|pre-line|break-spaces)/i.test(style);
 }
-function boardSafeNoteHtml(node, keepNewlines) {
+/* lists: true for Markdown items, whose editor keeps real <ol>/<ul>; older HTML items get one "1. " / "- " line per list item.
+   Internally a block end is marked with \u0001; it becomes a line break only if more content follows. */
+function boardSafeNoteHtml(node, keepNewlines, lists) {
+  return boardSafeNoteHtmlRaw(node, keepNewlines, lists).replace(/\u0001+(?=<br>|<ol|<ul|<\/li>|$)/g, '').replace(/\u0001+/g, '<br>');
+}
+function boardSafeNoteTrimBreaks(html) { return html.replace(/^(?:<br>|\u0001)+|(?:<br>|\u0001)+$/g, ''); }
+function boardSafeNoteHtmlRaw(node, keepNewlines, lists) {
   let html = '';
+  const endsBlock = function() { return html === '' || html.endsWith('<br>') || html.endsWith('\u0001') || /<\/(ol|ul)>$/.test(html); };
   node.childNodes.forEach(function(child) {
     if (child.nodeType === Node.TEXT_NODE) { if (!keepNewlines && /^\s*[\r\n]\s*$/.test(child.textContent)) return; html += keepNewlines ? boardPlainTextToNoteHtml(child.textContent) : boardEscapeNoteText(child.textContent.replace(/\s*[\r\n]+\s*/g, ' ')); return; }
     if (child.nodeType !== Node.ELEMENT_NODE) return;
@@ -823,18 +830,66 @@ function boardSafeNoteHtml(node, keepNewlines) {
     if (tag === 'i') tag = 'em';
     if (tag === 'br') { html += '<br>'; return; }
     if (tag === 'img') { html += boardSafeNoteImageHtml(child); return; }
-    const contents = boardSafeNoteHtml(child, keepNewlines || boardNodeKeepsNewlines(child));
-    if (['sup', 'sub', 'strong', 'em'].includes(tag)) { html += '<' + tag + '>' + contents + '</' + tag + '>'; return; }
-    if (['div', 'p'].includes(tag)) {
-      const blockContents = contents.replace(/^(?:<br>)+|(?:<br>)+$/g, '');
+    if (tag === 'ol' || tag === 'ul') {
+      const list = boardSafeNoteListHtml(child, keepNewlines, lists, 0);
+      if (list === '') return;
+      if (!lists && !endsBlock()) html += '<br>';
+      html += list + (lists ? '' : '\u0001');
+      return;
+    }
+    const contents = boardSafeNoteHtmlRaw(child, keepNewlines || boardNodeKeepsNewlines(child), lists);
+    if (['sup', 'sub', 'strong', 'em'].includes(tag)) {
+      if (/<(ol|ul)[ >]|\u0001/.test(contents)) { html += contents; return; } // a wrapper round whole blocks (Google Docs) is not real emphasis
+      if (contents !== '') html += '<' + tag + '>' + contents + '</' + tag + '>';
+      return;
+    }
+    if (['div', 'p', 'li'].includes(tag)) {
+      const blockContents = boardSafeNoteTrimBreaks(contents);
       if (blockContents === '') return;
-      if (html !== '' && !html.endsWith('<br>')) html += '<br>';
-      html += blockContents;
+      if (!endsBlock()) html += '<br>';
+      html += blockContents + '\u0001';
       return;
     }
     html += contents;
   });
   return html;
+}
+function boardSafeNoteListHtml(list, keepNewlines, lists, depth) {
+  const ordered = list.tagName.toLowerCase() === 'ol';
+  const attr = function(name) { return String((list.getAttribute && list.getAttribute(name)) || ''); };
+  const start = /^\d+$/.test(attr('start')) ? parseInt(attr('start'), 10) : 1;
+  const alpha = ordered && /^a$/i.test(attr('type'));
+  const pad = '\u00a0\u00a0'.repeat(depth);
+  let n = start;
+  const out = [];
+  list.childNodes.forEach(function(li) {
+    if (li.nodeType !== Node.ELEMENT_NODE || li.tagName.toLowerCase() !== 'li') return;
+    // Children in document order: runs of text/inline, with nested lists between them.
+    const parts = [];
+    let own = {childNodes: []};
+    const flush = function() { const t = boardSafeNoteTrimBreaks(boardSafeNoteHtmlRaw(own, keepNewlines, lists)); if (t !== '') parts.push({text: t}); own = {childNodes: []}; };
+    li.childNodes.forEach(function(k) {
+      if (k.nodeType === Node.ELEMENT_NODE && ['ol', 'ul'].includes(k.tagName.toLowerCase())) { flush(); const sub = boardSafeNoteListHtml(k, keepNewlines, lists, depth + 1); if (sub !== '') parts.push({sub: sub}); }
+      else own.childNodes.push(k);
+    });
+    flush();
+    if (lists) out.push('<li>' + parts.map(function(p) { return p.text !== undefined ? p.text : p.sub; }).join('') + '</li>');
+    else {
+      const marker = ordered ? (alpha ? String.fromCharCode(96 + ((n - 1) % 26) + 1) + ') ' : n + '. ') : '- ';
+      let first = true;
+      parts.forEach(function(p) {
+        if (p.sub !== undefined) { if (first) out.push(pad + marker); out.push(p.sub); }
+        else out.push(pad + (first ? marker : '\u00a0\u00a0') + p.text);
+        first = false;
+      });
+      if (first) out.push(pad + marker);
+    }
+    n++;
+  });
+  if (!out.length) return '';
+  if (!lists) return out.join('<br>').replace(/\u0001/g, '<br>');
+  const tag = ordered ? 'ol' : 'ul';
+  return '<' + tag + (ordered && start !== 1 ? ' start="' + start + '"' : '') + (alpha ? ' type="a"' : '') + '>' + out.join('') + '</' + tag + '>';
 }
 function boardSyncFormattedNote(editor, untouched) {
   const storage = editor.parentElement.querySelector('[data-formatted-notes-storage]');
@@ -945,7 +1000,8 @@ function boardPasteFormattedNote(event) {
   if (htmlSource !== '') {
     const staging = document.createElement('div');
     staging.innerHTML = htmlSource;
-    document.execCommand('insertHTML', false, boardSafeNoteHtml(staging));
+    const target = event.target.closest && event.target.closest('[data-formatted-notes-editor]');
+    document.execCommand('insertHTML', false, boardSafeNoteHtml(staging, false, !!target && target.dataset.notesMarkdown === '1'));
   } else {
     const plain = boardPlainTextToNoteHtml(clipboard.getData('text/plain'));
     if (plain !== '') document.execCommand('insertHTML', false, plain);

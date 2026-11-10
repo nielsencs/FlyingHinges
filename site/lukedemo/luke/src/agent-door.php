@@ -123,10 +123,20 @@ function agent_door_is_fold(string $entry): bool {
     return str_starts_with(strtolower(ltrim($entry)), '<details');
 }
 
+// A summary may be a short record over several lines (Decided:/Built:/Open:, or a list): each line
+// is trimmed and blank lines dropped, so line breaks and list lines survive. Fold tags are refused.
 function agent_door_fold_summary($summary): string {
-    $summary = trim(preg_replace('/\s+/', ' ', (string)$summary) ?? '');
+    $lines = [];
+    foreach (explode("\n", str_replace(["\r\n", "\r"], "\n", (string)$summary)) as $line) {
+        $line = trim(preg_replace('/\s+/', ' ', $line) ?? '');
+        if ($line !== '') $lines[] = $line;
+    }
+    $summary = implode("\n", $lines);
     if ($summary === '') {
         throw new AgentDoorError('every fold needs a summary', 422);
+    }
+    if (preg_match('/<\s*\/?\s*(details|summary)\b/i', $summary)) {
+        throw new AgentDoorError('a fold summary cannot contain <details> or <summary> tags', 422);
     }
     return $summary;
 }
