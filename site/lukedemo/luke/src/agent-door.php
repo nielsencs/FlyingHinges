@@ -173,15 +173,9 @@ function agent_door_is_note_fold(string $entry, bool $first = false): bool {
         return false;
     }
     $isNote = fn(string $e): bool => preg_match(AGENT_DOOR_STAMP_RE, explode("\n", $e, 2)[0]) === 1 || agent_door_is_note_fold($e);
-    if ($isNote($inner[0])) {
-        return true;
-    }
-    if ($first) {
-        foreach (array_slice($inner, 1) as $e) {
-            if ($isNote($e)) return true;
-        }
-    }
-    return false;
+    // At the top, a tool-shaped fold may hold only the item's unstamped opening text (Carl, #210:
+    // tool-shaped <details> are fair game for a refold); further down, a real fold starts with a note.
+    return $first || $isNote($inner[0]);
 }
 
 // Levels of real folds (folds of notes) in an entry; <details> examples typed inside a note do not count.
