@@ -16,6 +16,7 @@ const AGENT_DOOR_MIME = [
     'txt' => 'text/plain', 'png' => 'image/png', 'jpg' => 'image/jpeg',
 ];
 const AGENT_DOOR_MAX_FOLD_DEPTH = 3;
+const AGENT_DOOR_STAMP_RE = '/^[A-Za-z][A-Za-z ]{0,30} \d{4}-\d{2}-\d{2} \d{1,2}:\d{2}\s*$/';
 
 class AgentDoorError extends RuntimeException {}
 
@@ -91,6 +92,7 @@ function agent_door_split_entries(string $notes): array {
     $entries = [];
     $cur = [];
     $depth = 0;
+    $blockStart = null;
     $flush = function () use (&$entries, &$cur) {
         $entries[] = trim(implode("\n", $cur), "\n");
         $cur = [];
@@ -98,11 +100,11 @@ function agent_door_split_entries(string $notes): array {
     foreach (explode("\n", $notes) as $line) {
         $top = $depth === 0;
         $hasText = trim(implode('', $cur)) !== '';
-        if ($top && preg_match('/^[A-Za-z][A-Za-z ]{0,30} \d{4}-\d{2}-\d{2} \d{1,2}:\d{2}\s*$/', $line) && $cur && $hasText) {
+        if ($top && preg_match(AGENT_DOOR_STAMP_RE, $line) && $cur && $hasText) {
             $flush();
         }
-        if ($top && str_starts_with(strtolower(ltrim($line)), '<details') && $cur && $hasText) {
-            $flush();
+        if ($top && str_starts_with(strtolower(ltrim($line)), '<details')) {
+            $blockStart = count($cur);
         }
         $cur[] = $line;
         $closing = agent_door_fold_tag_match($line);
@@ -110,7 +112,23 @@ function agent_door_split_entries(string $notes): array {
             $depth = max(0, $depth + ($closing !== '' ? -1 : 1));
         }
         if ($depth === 0 && str_ends_with(strtolower(trim($line)), '</details>')) {
-            $flush();
+            if ($blockStart === null) {
+                $flush();
+                continue;
+            }
+            $before = array_slice($cur, 0, $blockStart);
+            $block = trim(implode("\n", array_slice($cur, $blockStart)), "\n");
+            $blockStart = null;
+            $beforeText = trim(implode('', $before)) !== '';
+            // A <details> example typed inside someone's note stays part of that note.
+            if ($beforeText && !agent_door_is_note_fold($block)) {
+                continue;
+            }
+            if ($beforeText) {
+                $entries[] = trim(implode("\n", $before), "\n");
+            }
+            $entries[] = $block;
+            $cur = [];
         }
     }
     if (trim(implode('', $cur)) !== '') {
@@ -121,6 +139,39 @@ function agent_door_split_entries(string $notes): array {
 
 function agent_door_is_fold(string $entry): bool {
     return str_starts_with(strtolower(ltrim($entry)), '<details');
+}
+
+// The text inside a fold, without its <details>/<summary> wrapper.
+function agent_door_fold_body(string $entry): string {
+    $body = preg_replace('/^\s*<\s*details\b[^>]*>\s*(?:<\s*summary\b[^>]*>.*?<\s*\/\s*summary\s*>)?/is', '', $entry, 1) ?? $entry;
+    return trim(preg_replace('/<\s*\/\s*details\s*>\s*$/i', '', $body) ?? $body, "\n");
+}
+
+// A fold of notes (made by a fold tool) starts with a stamped note or another note fold.
+// A <details> example Carl typed inside his own note does not, so it is left as he wrote it.
+// $first: the fold opens the Notes, where the item's unstamped opening text may sit.
+function agent_door_is_note_fold(string $entry, bool $first = false): bool {
+    if (!agent_door_is_fold($entry)) {
+        return false;
+    }
+    $inner = agent_door_split_entries(agent_door_fold_body($entry));
+    if (!$inner) {
+        return false;
+    }
+    return $first || preg_match(AGENT_DOOR_STAMP_RE, explode("\n", $inner[0], 2)[0]) === 1 || agent_door_is_note_fold($inner[0]);
+}
+
+// Take every note fold away (all levels), giving back the plain notes. Only fold markup goes.
+function agent_door_unwrap_folds(string $notes, bool $first = true): string {
+    $out = [];
+    foreach (agent_door_split_entries($notes) as $i => $e) {
+        $top = $first && $i === 0;
+        $x = agent_door_is_note_fold($e, $top) ? agent_door_unwrap_folds(agent_door_fold_body($e), $top) : $e;
+        if (trim($x) !== '') {
+            $out[] = $x;
+        }
+    }
+    return implode("\n\n", $out);
 }
 
 // A summary may be a short record over several lines (Decided:/Built:/Open:, or a list): each line
@@ -274,6 +325,7 @@ function agent_door_change_item(string $actor, string $action, array $p, array $
     $folds = (array)($p['fold'] ?? []);
     $relabels = (array)($p['relabel'] ?? []);
     $merges = (array)($p['merge'] ?? []);
+    $refold = !empty($p['refold']);
     $needs = ['add_note' => $text !== '', 'set_status' => $status !== '', 'fold' => $folds || $relabels || $merges, 'attach' => isset($files['file'])];
     if (!$needs[$action]) {
         throw new AgentDoorError("$action needs its main parameter", 422);
@@ -288,7 +340,7 @@ function agent_door_change_item(string $actor, string $action, array $p, array $
     if ($at !== '' && !preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/', $at)) {
         throw new AgentDoorError('bad note time', 422);
     }
-    return agent_door_locked(function () use ($actor, $id, $text, $status, $folds, $relabels, $merges, $at, $p, $files) {
+    return agent_door_locked(function () use ($actor, $id, $text, $status, $folds, $relabels, $merges, $refold, $at, $p, $files) {
         $board = project_load_board();
         $i = agent_door_item_index($board, $id);
         $item = $board['items'][$i];
@@ -300,6 +352,17 @@ function agent_door_change_item(string $actor, string $action, array $p, array $
             $stamped = $actor . ' ' . ($at !== '' ? $at : project_note_stamp_datetime()) . "\n" . $text;
         }
         $attachment = isset($files['file']) ? agent_door_attachment_entry($p, $files) : null;
+        if ($refold && ($stamped === '' || !str_contains($notes, $stamped))) {
+            // Rebuild the folds from the plain notes; merges then number the new folds.
+            if (!$folds || $relabels) {
+                throw new AgentDoorError('refold needs new folds and takes no relabels', 422);
+            }
+            $notes = agent_door_fold_notes(agent_door_unwrap_folds($notes), $folds);
+            foreach ($merges as $m) {
+                $notes = agent_door_merge_folds($notes, (int)($m[0] ?? 0), (int)($m[1] ?? 0), (string)($m[2] ?? ''));
+            }
+            $folds = $merges = [];
+        }
         if ($stamped === '' || !str_contains($notes, $stamped)) {
             foreach ($relabels as $r) {
                 $notes = agent_door_relabel_fold($notes, (int)($r[0] ?? 0), (string)($r[1] ?? ''));
