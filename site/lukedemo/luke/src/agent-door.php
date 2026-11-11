@@ -8,7 +8,7 @@
 //
 // Request:  POST index.php?agent_door=ACTION   Authorization: Bearer KEY
 //           JSON body (or multipart for `attach`).
-// Actions:  read_item, read_board, read_state, add_note, set_status, fold, attach, set_light, clear_light.
+// Actions:  read_item, read_board, read_state, add_note, set_status, fold, attach, add_item, set_light, clear_light.
 
 const AGENT_DOOR_FILE_NAME_RE = '/^[A-Za-z0-9][A-Za-z0-9._-]{0,120}$/';
 const AGENT_DOOR_MIME = [
@@ -433,6 +433,43 @@ function agent_door_change_item(string $actor, string $action, array $p, array $
     });
 }
 
+// add_item (#231): a new item for Carl to triage, so it is always Open with no Priority.
+// The notes are stamped as the key's owner. Re-sending the same title and text finds the
+// item made first instead of adding a second one (a lost reply is safe to retry).
+function agent_door_add_item(string $actor, array $p): array {
+    $title = trim(preg_replace('/\s+/', ' ', (string)($p['title'] ?? '')) ?? '');
+    // Same clean-up the save applies, so a retry compares like with like.
+    $text = project_normalise_notes_text((string)($p['text'] ?? ''));
+    if ($title === '' || $text === '') {
+        throw new AgentDoorError('add_item needs a title and notes', 422);
+    }
+    $at = (string)($p['at'] ?? '');
+    if ($at !== '' && !preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/', $at)) {
+        throw new AgentDoorError('bad note time', 422);
+    }
+    return agent_door_locked(function () use ($actor, $p, $title, $text, $at) {
+        $board = project_load_board();
+        $stampRe = '/^' . preg_quote($actor, '/') . ' \d{4}-\d{2}-\d{2} \d{1,2}:\d{2}\n/';
+        // A retry is an exact repeat: same title, same notes, same Area and Focus.
+        [$section, $project] = project_item_scope($board, ['section' => (string)($p['section'] ?? ''), 'project' => (string)($p['project'] ?? '')]);
+        foreach ($board['items'] as $item) {
+            $notes = (string)($item['notes'] ?? '');
+            if ((string)($item['title'] ?? '') === $title && (string)($item['section'] ?? '') === $section && (string)($item['project'] ?? '') === $project
+                && preg_match($stampRe, $notes) && preg_replace($stampRe, '', $notes, 1) === $text) {
+                return ['ok' => true, 'item' => (int)$item['id'], 'created' => false];
+            }
+        }
+        $stamped = $actor . ' ' . ($at !== '' ? $at : project_note_stamp_datetime()) . "\n" . $text;
+        $id = project_next_item_id($board);
+        $board = project_add_item($board, [
+            'title' => $title, 'notes' => $stamped, 'priority' => '', 'status' => 'Open',
+            'section' => $section, 'project' => $project,
+        ]);
+        project_save_board($board, $actor);
+        return ['ok' => true, 'item' => $id, 'created' => true];
+    });
+}
+
 function agent_door_write_light(array $item): void {
     $path = project_activity_path();
     $payload = [
@@ -507,6 +544,8 @@ function agent_door_handle(string $action): void {
             case 'fold':
             case 'attach':
                 agent_door_reply(200, agent_door_change_item($actor, $action, $p, $_FILES));
+            case 'add_item':
+                agent_door_reply(200, agent_door_add_item($actor, $p));
             case 'set_light':
                 $board = project_load_board();
                 agent_door_write_light($board['items'][agent_door_item_index($board, (int)($p['id'] ?? 0))]);
