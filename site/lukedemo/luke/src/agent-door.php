@@ -141,24 +141,69 @@ function agent_door_is_fold(string $entry): bool {
     return str_starts_with(strtolower(ltrim($entry)), '<details');
 }
 
-// The text inside a fold, without its <details>/<summary> wrapper.
-function agent_door_fold_body(string $entry): string {
-    $body = preg_replace('/^\s*<\s*details\b[^>]*>\s*(?:<\s*summary\b[^>]*>.*?<\s*\/\s*summary\s*>)?/is', '', $entry, 1) ?? $entry;
-    return trim(preg_replace('/<\s*\/\s*details\s*>\s*$/i', '', $body) ?? $body, "\n");
+// The exact shape the fold tools (agent door, watcher, board editor) write. Anything else is left as written.
+const AGENT_DOOR_FOLD_SHAPE_RE = '/\A<details>\n<summary>((?:(?!<\/?summary\b|<\/?details\b).)*)<\/summary>\n\n(.*)\n\n<\/details>\z/s';
+
+// The text inside a tool-made fold, byte for byte; null when the entry is not in that exact shape
+// or its body has unbalanced <details> tags.
+function agent_door_fold_body(string $entry): ?string {
+    if (!preg_match(AGENT_DOOR_FOLD_SHAPE_RE, $entry, $m)) {
+        return null;
+    }
+    $depth = 0;
+    foreach (explode("\n", $m[2]) as $line) {
+        $closing = agent_door_fold_tag_match($line);
+        if ($closing === null) continue;
+        if ($closing !== '' && $depth === 0) return null;
+        $depth += $closing !== '' ? -1 : 1;
+    }
+    return $depth === 0 ? $m[2] : null;
 }
 
-// A fold of notes (made by a fold tool) starts with a stamped note or another note fold.
+// A fold of notes (made by a fold tool) holds stamped notes or other note folds.
 // A <details> example Carl typed inside his own note does not, so it is left as he wrote it.
-// $first: the fold opens the Notes, where the item's unstamped opening text may sit.
+// $first: the fold opens the Notes, where the item's unstamped opening text may come first.
 function agent_door_is_note_fold(string $entry, bool $first = false): bool {
-    if (!agent_door_is_fold($entry)) {
+    $body = agent_door_fold_body($entry);
+    if ($body === null) {
         return false;
     }
-    $inner = agent_door_split_entries(agent_door_fold_body($entry));
+    $inner = agent_door_split_entries($body);
     if (!$inner) {
         return false;
     }
-    return $first || preg_match(AGENT_DOOR_STAMP_RE, explode("\n", $inner[0], 2)[0]) === 1 || agent_door_is_note_fold($inner[0]);
+    $isNote = fn(string $e): bool => preg_match(AGENT_DOOR_STAMP_RE, explode("\n", $e, 2)[0]) === 1 || agent_door_is_note_fold($e);
+    if ($isNote($inner[0])) {
+        return true;
+    }
+    if ($first) {
+        foreach (array_slice($inner, 1) as $e) {
+            if ($isNote($e)) return true;
+        }
+    }
+    return false;
+}
+
+// Levels of real folds (folds of notes) in an entry; <details> examples typed inside a note do not count.
+function agent_door_note_fold_depth(string $entry): int {
+    if (!agent_door_is_note_fold($entry, true)) {
+        return 0;
+    }
+    $best = 0;
+    foreach (agent_door_split_entries(agent_door_fold_body($entry)) as $e) {
+        $best = max($best, agent_door_note_fold_depth($e));
+    }
+    return 1 + $best;
+}
+
+function agent_door_check_depth(array $group): void {
+    $best = 0;
+    foreach ($group as $e) {
+        $best = max($best, agent_door_note_fold_depth($e));
+    }
+    if ($best + 1 > AGENT_DOOR_MAX_FOLD_DEPTH) {
+        throw new AgentDoorError('folds may be at most ' . AGENT_DOOR_MAX_FOLD_DEPTH . ' deep', 422);
+    }
 }
 
 // Take every note fold away (all levels), giving back the plain notes. Only fold markup goes.
@@ -166,7 +211,7 @@ function agent_door_unwrap_folds(string $notes, bool $first = true): string {
     $out = [];
     foreach (agent_door_split_entries($notes) as $i => $e) {
         $top = $first && $i === 0;
-        $x = agent_door_is_note_fold($e, $top) ? agent_door_unwrap_folds(agent_door_fold_body($e), $top) : $e;
+        $x = agent_door_is_note_fold($e, $top) ? agent_door_unwrap_folds(agent_door_fold_body($e) ?? '', $top) : $e;
         if (trim($x) !== '') {
             $out[] = $x;
         }
@@ -224,7 +269,9 @@ function agent_door_fold_notes(string $notes, array $folds): string {
         if ($count < 1 || $pos + $count > $carlLast) {
             throw new AgentDoorError('fold would be empty or would cover the latest Carl note', 422);
         }
-        $blocks[] = agent_door_fold_block($summary, array_slice($entries, $pos, $count));
+        $group = array_slice($entries, $pos, $count);
+        agent_door_check_depth($group);
+        $blocks[] = agent_door_fold_block($summary, $group);
         $pos += $count;
     }
     return implode("\n\n", array_merge(array_slice($entries, 0, $start), $blocks, array_slice($entries, $pos)));
@@ -275,9 +322,7 @@ function agent_door_merge_folds(string $notes, int $first, int $last, string $su
         throw new AgentDoorError('folds to merge must be neighbours', 422);
     }
     $group = array_slice($entries, $chosen[0], count($chosen));
-    if (agent_door_fold_depth(implode("\n\n", $group)) + 1 > AGENT_DOOR_MAX_FOLD_DEPTH) {
-        throw new AgentDoorError('folds may be at most ' . AGENT_DOOR_MAX_FOLD_DEPTH . ' deep', 422);
-    }
+    agent_door_check_depth($group);
     $block = agent_door_fold_block($summary, $group);
     return implode("\n\n", array_merge(array_slice($entries, 0, $chosen[0]), [$block], array_slice($entries, end($chosen) + 1)));
 }
