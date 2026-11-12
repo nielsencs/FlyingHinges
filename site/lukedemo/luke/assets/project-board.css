@@ -469,6 +469,12 @@ body.details-motion-ready .add-item-disclosure > summary::before {
   background: linear-gradient(90deg, var(--priority-bg) 0 33%, var(--status-bg) 67% 100%);
 }
 
+/* None palette (#242): plain card background, colours only on the labels. */
+html[data-palette="none"] .task-row,
+html[data-palette="none"] .task-row>td {
+  background: var(--panel);
+}
+
 .task-row+.task-row,
 .task-row+.task-row>td {
   border-top: 3px solid var(--bg);

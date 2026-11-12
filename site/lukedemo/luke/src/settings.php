@@ -35,7 +35,7 @@ function project_colour_names(): array {
     ];
 }
 
-const PROJECT_PALETTES = ['bright' => 'Bright', 'light' => 'Light', 'dark' => 'Dark', 'custom' => 'Custom'];
+const PROJECT_PALETTES = ['bright' => 'Bright', 'light' => 'Light', 'dark' => 'Dark', 'soft' => 'Soft', 'none' => 'None', 'structured' => 'Structured', 'custom' => 'Custom'];
 
 function project_palettes(): array {
     return [
@@ -51,6 +51,21 @@ function project_palettes(): array {
             'priority_wont' => '#b02a2a', 'priority_blank' => '#b0447f',
             'status_open' => '#2f5fcf', 'status_doing' => '#1f9d57', 'status_ready' => '#a8841a',
             'status_blocked' => '#3d3d3d', 'status_done' => '#6a43c9',
+        ],
+        'soft' => [
+            'priority_must' => '#8fb9d4', 'priority_should' => '#9cc8b5', 'priority_could' => '#d6b56f',
+            'priority_wont' => '#d58c88', 'priority_blank' => '#b6a6c8',
+            'status_open' => '#8fa7ce', 'status_doing' => '#75b7a2', 'status_ready' => '#d4b95f',
+            'status_blocked' => '#9aa0a8', 'status_done' => '#9d91c5',
+        ],
+        // None: cards keep the plain panel background (html[data-palette="none"] in CSS);
+        // these colours only tint the Priority/Status labels.
+        'none' => project_default_colours(),
+        'structured' => [
+            'priority_must' => '#e07a70', 'priority_should' => '#e8a15b', 'priority_could' => '#e2c85d',
+            'priority_wont' => '#89929c', 'priority_blank' => '#c4a3cc',
+            'status_open' => '#6f9ccf', 'status_doing' => '#58aa98', 'status_ready' => '#9a89c7',
+            'status_blocked' => '#737b84', 'status_done' => '#79a17d',
         ],
     ];
 }
@@ -69,7 +84,7 @@ function project_clean_colours(array $input): array {
     return $out;
 }
 
-// Saved shape: label_mode, palette (bright|light|dark|custom), custom_colours (full set).
+// Saved shape: label_mode, palette (a PROJECT_PALETTES key), custom_colours (full set).
 // Returned 'colours' = effective colours that differ from Bright (what must be emitted as CSS).
 function project_settings(array $board): array {
     $settings = is_array($board['settings'] ?? null) ? $board['settings'] : [];

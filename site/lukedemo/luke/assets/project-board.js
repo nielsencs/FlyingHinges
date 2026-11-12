@@ -1161,6 +1161,7 @@ function boardSettingsApplyPalette(form, name) {
 }
 function boardSettingsSetPalette(form, name) {
   form.querySelectorAll('[data-palette]').forEach(function(r) { r.checked = r.value === name; });
+  document.documentElement.dataset.palette = name;
 }
 function boardSettingsRevert(form) {
   form.querySelectorAll('[data-colour-var]').forEach(function(input) {
@@ -1192,7 +1193,7 @@ function boardSettingsInput(event) {
   const t = event.target;
   if (!t.closest || !t.closest('[data-settings-form]')) return;
   if (t.matches('[data-label-mode]')) boardApplyLabelMode(t.value);
-  if (t.matches('[data-palette]')) boardSettingsApplyPalette(t.closest('form'), t.value);
+  if (t.matches('[data-palette]')) { document.documentElement.dataset.palette = t.value; boardSettingsApplyPalette(t.closest('form'), t.value); }
   if (t.matches('[data-colour-var]')) {
     const form = t.closest('form');
     const current = form.querySelector('[data-palette]:checked');
@@ -1218,7 +1219,16 @@ function boardSettingsSubmit(event) {
       if (data && data.version) boardVersion = data.version;
       form.querySelectorAll('[data-colour-var]').forEach(function(input) { input.dataset.saved = input.value; });
       const pal = form.querySelector('[data-palette]:checked');
-      if (pal) { form.dataset.savedPalette = pal.value; if (pal.value === 'custom') form.dataset.hasCustom = '1'; }
+      if (pal) {
+        form.dataset.savedPalette = pal.value;
+        if (pal.value === 'custom') {
+          form.dataset.hasCustom = '1';
+          const sets = boardSettingsPalettes(form);
+          sets.custom = {};
+          form.querySelectorAll('[data-colour-var]').forEach(function(input) { sets.custom[input.dataset.colourKey] = input.value; });
+          form.dataset.palettes = JSON.stringify(sets);
+        }
+      }
       const checked = form.querySelector('[data-label-mode]:checked');
       if (checked) form.dataset.savedMode = checked.value;
       boardSettingsModal().hidden = true;
