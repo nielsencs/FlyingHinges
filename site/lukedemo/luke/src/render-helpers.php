@@ -630,15 +630,12 @@ function project_item_status_matches_filter(array $todo, array $statusFilters, b
     }
     $status = (string)($todo['status'] ?? 'Open');
     $id = trim((string)($todo['id'] ?? ''));
-    if ($activeItemId !== '' && $id === $activeItemId && in_array('agent-active', $statusFilters, true)) {
-        return true;
-    }
-    // Recent changes narrows the other status ticks: of the recent items, show only those statuses.
+    // Recent changes narrows the other ticks: of the recent items, show only those that match them.
     if (in_array('recent', $statusFilters, true)) {
         if (!array_key_exists($id, $recentRanks)) {
             return false;
         }
-        $otherFilters = array_values(array_filter($statusFilters, fn($filter) => $filter !== 'recent' && $filter !== 'agent-active'));
+        $otherFilters = array_values(array_filter($statusFilters, fn($filter) => $filter !== 'recent'));
         if ($otherFilters === []) {
             return true;
         }
