@@ -584,15 +584,7 @@ function project_item_status_filter_selected(mixed $raw, string $value): bool {
 }
 
 function project_effective_item_status_filters(mixed $raw): array {
-    $filters = project_item_status_filter_values($raw);
-    $activeStatuses = ['Open', 'Do', 'Ready'];
-    $hasRecent = in_array('recent', $filters, true);
-    $hasActiveStatus = count(array_intersect($activeStatuses, $filters)) > 0;
-    $hasInactiveStatus = count(array_intersect(['Done', 'Blocked', 'Bin', 'inactive'], $filters)) > 0;
-    if ($hasRecent && $hasActiveStatus && !$hasInactiveStatus) {
-        $filters = array_values(array_filter($filters, fn($filter) => $filter !== 'recent'));
-    }
-    return $filters;
+    return project_item_status_filter_values($raw);
 }
 
 function project_recent_item_counts(): array {
@@ -637,10 +629,22 @@ function project_item_status_matches_filter(array $todo, array $statusFilters, b
         return true;
     }
     $status = (string)($todo['status'] ?? 'Open');
-    foreach ($statusFilters as $filter) {
-        if ($filter === 'recent' && array_key_exists(trim((string)($todo['id'] ?? '')), $recentRanks)) {
+    $id = trim((string)($todo['id'] ?? ''));
+    if ($activeItemId !== '' && $id === $activeItemId && in_array('agent-active', $statusFilters, true)) {
+        return true;
+    }
+    // Recent changes narrows the other status ticks: of the recent items, show only those statuses.
+    if (in_array('recent', $statusFilters, true)) {
+        if (!array_key_exists($id, $recentRanks)) {
+            return false;
+        }
+        $otherFilters = array_values(array_filter($statusFilters, fn($filter) => $filter !== 'recent' && $filter !== 'agent-active'));
+        if ($otherFilters === []) {
             return true;
         }
+        $statusFilters = $otherFilters;
+    }
+    foreach ($statusFilters as $filter) {
         if ($filter === 'agent-active' && $activeItemId !== '' && trim((string)($todo['id'] ?? '')) === $activeItemId) {
             return true;
         }

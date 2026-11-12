@@ -125,15 +125,22 @@ function project_render_board(array $board, array $query = []): string {
     $recentFilterActive = in_array('recent', $statusFilterValues, true);
     $recentItemCounts = project_recent_item_counts();
     $recentDefaultCount = project_recent_item_default_count();
-    if ($statusFilterValues === []) {
+    $summaryStatusValues = $statusFilterValues;
+    $summaryPrefix = '';
+    if ($recentFilterActive && count($statusFilterValues) > 1) {
+        // Recent narrows the other ticks, so read it as "Recent changes: <those> items".
+        $summaryStatusValues = array_values(array_filter($statusFilterValues, fn($status) => $status !== 'recent'));
+        $summaryPrefix = 'Recent changes: ';
+    }
+    if ($summaryStatusValues === []) {
         $itemsFilterParts = ['All items'];
-    } elseif (count(array_diff($statusFilterValues, ['Open', 'Do', 'Ready', 'agent-active'])) === 0 && count(array_intersect(['Open', 'Do', 'Ready'], $statusFilterValues)) === 3 && in_array('agent-active', $statusFilterValues, true)) {
-        $itemsFilterParts = ['Active items + Agent active'];
-    } elseif (count($statusFilterValues) === 1) {
-        $statusLabel = $statusLabels[$statusFilterValues[0]] ?? $statusFilterValues[0];
-        $itemsFilterParts = [$statusFilterValues[0] === 'recent' || $statusFilterValues[0] === 'agent-active' || str_ends_with($statusLabel, 'items') ? $statusLabel : $statusLabel . ' items'];
+    } elseif (count(array_diff($summaryStatusValues, ['Open', 'Do', 'Ready', 'agent-active'])) === 0 && count(array_intersect(['Open', 'Do', 'Ready'], $summaryStatusValues)) === 3 && in_array('agent-active', $summaryStatusValues, true)) {
+        $itemsFilterParts = [$summaryPrefix . 'Active items + Agent active'];
+    } elseif (count($summaryStatusValues) === 1) {
+        $statusLabel = $statusLabels[$summaryStatusValues[0]] ?? $summaryStatusValues[0];
+        $itemsFilterParts = [$summaryPrefix . ($summaryStatusValues[0] === 'recent' || $summaryStatusValues[0] === 'agent-active' || str_ends_with($statusLabel, 'items') ? $statusLabel : $statusLabel . ' items')];
     } else {
-        $itemsFilterParts = [implode(' + ', array_map(fn($status) => $statusLabels[$status] ?? $status, $statusFilterValues)) . ' items'];
+        $itemsFilterParts = [$summaryPrefix . implode(' + ', array_map(fn($status) => $statusLabels[$status] ?? $status, $summaryStatusValues)) . ' items'];
     }
     if ($taskPriority !== '') {
         $itemsFilterParts[] = $taskPriority === '__blank' ? 'blank priority' : $taskPriority;
