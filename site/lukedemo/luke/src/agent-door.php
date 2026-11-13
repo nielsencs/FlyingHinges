@@ -235,18 +235,32 @@ function agent_door_fold_block(string $summary, array $group): string {
     return "<details>\n<summary>" . $summary . "</summary>\n\n" . implode("\n\n", $group) . "\n\n</details>";
 }
 
-// folds: list of [count|'*', summary]. '*' = everything unfolded before Carl's latest note.
-function agent_door_fold_notes(string $notes, array $folds): string {
-    if (!$folds) {
-        return $notes;
-    }
-    $entries = agent_door_split_entries($notes);
+// First entry that may never be folded: the latest round, i.e. Carl's latest note (with any Carl notes
+// straight before it) plus the non-Carl note or opening text they reply to (LUKE #210, #195). Same as the watcher.
+function agent_door_open_from(array $entries): int {
     $carlLast = count($entries);
     foreach ($entries as $i => $e) {
         if (str_starts_with($e, 'Carl ')) {
             $carlLast = $i;
         }
     }
+    while ($carlLast > 0 && $carlLast < count($entries) && str_starts_with($entries[$carlLast - 1], 'Carl ')) {
+        $carlLast--;
+    }
+    $prev = $carlLast - 1;
+    if ($prev >= 0 && !agent_door_is_fold($entries[$prev]) && !str_starts_with($entries[$prev], 'Carl ')) {
+        return $prev; // a stamped note, or the item's unstamped opening text (Codex review)
+    }
+    return $carlLast;
+}
+
+// folds: list of [count|'*', summary]. '*' = everything unfolded before the latest round.
+function agent_door_fold_notes(string $notes, array $folds): string {
+    if (!$folds) {
+        return $notes;
+    }
+    $entries = agent_door_split_entries($notes);
+    $carlLast = agent_door_open_from($entries);
     $start = 0;
     while ($start < count($entries) && agent_door_is_fold($entries[$start])) {
         $start++;
@@ -261,7 +275,7 @@ function agent_door_fold_notes(string $notes, array $folds): string {
         }
         $count = (int)$count;
         if ($count < 1 || $pos + $count > $carlLast) {
-            throw new AgentDoorError('fold would be empty or would cover the latest Carl note', 422);
+            throw new AgentDoorError('fold would be empty or would cover the latest Carl note or the note it replies to', 422);
         }
         $group = array_slice($entries, $pos, $count);
         agent_door_check_depth($group);
